@@ -8,8 +8,10 @@
 const fs = require('fs');
 const path = require('path');
 
-// Load environment variables
-require('dotenv').config({ path: '.env.local' });
+// Load environment variables (only needed locally, Vercel injects directly)
+if (fs.existsSync('.env.local')) {
+  require('dotenv').config({ path: '.env.local' });
+}
 
 const requiredEnvVars = [
   'NEXT_PUBLIC_FIREBASE_API_KEY',

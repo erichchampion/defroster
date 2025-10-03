@@ -65,7 +65,7 @@ npm install
 
 1. Create a new Firebase project at [Firebase Console](https://console.firebase.google.com/)
 2. Enable **Firestore Database**:
-   - Go to Firestore Database → Create Database
+   - Go to Project Settings → Build → Firestore Database → Create Database
    - Start in **production mode**
 3. Enable **Cloud Messaging**:
    - Go to Project Settings → Cloud Messaging

@@ -32,9 +32,16 @@ try {
   adminMessaging = admin.messaging();
 } catch (error) {
   const isDevelopment = process.env.NODE_ENV === 'development';
+  const errorMessage = error instanceof Error ? error.message : String(error);
 
   if (isDevelopment) {
-    console.warn('Firebase Admin SDK initialization failed (development mode):', error);
+    console.warn('⚠️  Firebase Admin SDK initialization failed (development mode):');
+    console.warn('   Error:', errorMessage);
+    console.warn('   FIREBASE_SERVICE_ACCOUNT_KEY present:', !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    console.warn('   Project ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+    console.warn('');
+    console.warn('   To fix: Add FIREBASE_SERVICE_ACCOUNT_KEY to .env.local');
+    console.warn('   See: https://firebase.google.com/docs/admin/setup#initialize-sdk');
   } else {
     console.error('CRITICAL: Firebase Admin SDK initialization failed in production:', error);
     // In production, this is a critical error that should be monitored/alerted

@@ -199,6 +199,9 @@ Open [http://localhost:3000](http://localhost:3000) and grant location permissio
      - Schedule: `0 * * * *` (hourly)
      - Add custom header: `x-cron-secret: your_cron_secret`
 
+Make sure to add NEXT_PUBLIC_BASE_URL to your Vercel environment variables with the 
+actual deployment URL (e.g., https://your-app.vercel.app).
+
 ### Option 2: Firebase Hosting + Cloud Functions
 
 1. **Build the app**:

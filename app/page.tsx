@@ -10,6 +10,11 @@ import MessageList from '@/app/components/MessageList';
 import { GeoLocation } from '@/lib/types/message';
 import { registerServiceWorker } from '@/lib/utils/register-sw';
 import { useI18n } from '@/lib/contexts/I18nContext';
+import {
+  MESSAGE_REFRESH_INTERVAL_MS,
+  CLEANUP_INTERVAL_MS,
+  OLD_MESSAGE_CLEANUP_INTERVAL_MS
+} from '@/lib/constants/time';
 
 // Dynamically import the map component to avoid SSR issues with Leaflet
 const SightingMap = dynamic(() => import('@/app/components/SightingMap'), {
@@ -21,6 +26,7 @@ export default function Home() {
   const { location, permissionGranted, requestPermission: requestLocationPermission } = useGeolocation();
   const {
     token,
+    deviceId,
     permission,
     messages,
     isOffline,
@@ -52,14 +58,14 @@ export default function Home() {
         // Automatically request notification permission if not already granted
         if (permission !== 'granted') {
           const fcmToken = await requestPermission();
-          if (fcmToken) {
-            await registerDevice(location);
+          if (fcmToken && deviceId) {
+            await registerDevice(location, fcmToken, deviceId);
           }
         } else if (permission === 'granted' && !token) {
           // Permission granted but no token - try to get it
           const fcmToken = await requestPermission();
-          if (fcmToken) {
-            await registerDevice(location);
+          if (fcmToken && deviceId) {
+            await registerDevice(location, fcmToken, deviceId);
           }
         }
 
@@ -68,7 +74,7 @@ export default function Home() {
 
       setup();
     }
-  }, [permissionGranted, location, isReady, permission, token, requestPermission, registerDevice, getMessages]);
+  }, [permissionGranted, location, isReady, permission, token, deviceId, requestPermission, registerDevice, getMessages]);
 
   // Set up message listener
   useEffect(() => {
@@ -84,12 +90,12 @@ export default function Home() {
       // Cleanup local IndexedDB storage periodically
       const localCleanupInterval = setInterval(() => {
         cleanupExpiredMessages();
-      }, 15 * 60 * 1000); // Every 15 minutes
+      }, CLEANUP_INTERVAL_MS);
 
       // Cleanup old messages (older than 1 week) daily
       const oldMessageCleanupInterval = setInterval(() => {
         cleanupOldMessages();
-      }, 24 * 60 * 60 * 1000); // Every 24 hours
+      }, OLD_MESSAGE_CLEANUP_INTERVAL_MS);
 
       // Initial cleanup - both expired and old messages
       cleanupExpiredMessages();
@@ -115,14 +121,30 @@ export default function Home() {
     await getMessages(location);
   };
 
-  // Refresh messages periodically
+  // Refresh messages periodically (only when page is visible)
   useEffect(() => {
     if (isReady && location) {
-      const interval = setInterval(() => {
-        getMessages(location);
-      }, 30000); // Refresh every 30 seconds
+      const refreshMessages = () => {
+        if (!document.hidden) {
+          getMessages(location);
+        }
+      };
 
-      return () => clearInterval(interval);
+      const interval = setInterval(refreshMessages, MESSAGE_REFRESH_INTERVAL_MS);
+
+      // Also refresh when page becomes visible again
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          getMessages(location);
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
   }, [isReady, location, getMessages]);
 
@@ -168,8 +190,8 @@ export default function Home() {
             <button
               onClick={async () => {
                 const fcmToken = await requestPermission();
-                if (fcmToken && location) {
-                  await registerDevice(location);
+                if (fcmToken && location && deviceId) {
+                  await registerDevice(location, fcmToken, deviceId);
                 }
               }}
               className="mt-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded"

@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
     const messages = await dataService.getMessagesInRadius(location, radiusMiles);
 
     return NextResponse.json({ messages });
-  } catch {
-    console.error('Error getting messages');
+  } catch (error) {
+    console.error('Error getting messages:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { GeoLocation } from '@/lib/types/message';
 import { getGeolocationErrorMessage } from '@/lib/utils/geolocation-errors';
+import { GEOLOCATION_TIMEOUT_MS } from '@/lib/constants/time';
 
 export function useGeolocation() {
   const [location, setLocation] = useState<GeoLocation | null>(null);
@@ -22,7 +23,7 @@ export function useGeolocation() {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: GEOLOCATION_TIMEOUT_MS,
           maximumAge: 0,
         });
       });
@@ -63,7 +64,7 @@ export function useGeolocation() {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: GEOLOCATION_TIMEOUT_MS,
           maximumAge: 0,
         });
       });

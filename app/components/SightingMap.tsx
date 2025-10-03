@@ -101,6 +101,14 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
     [currentLocation]
   );
 
+  // Memoize message markers to avoid recreating icons on every render
+  const messageMarkers = useMemo(() => {
+    return messages.map((message) => ({
+      ...message,
+      icon: getIconForSightingType(message.sightingType, message.timestamp)
+    }));
+  }, [messages]);
+
   return (
     <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-lg border-2 border-gray-200">
       <MapContainer
@@ -143,22 +151,22 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
         </Marker>
 
         {/* Sighting markers */}
-        {messages.map((message) => (
+        {messageMarkers.map((marker) => (
           <Marker
-            key={message.id}
-            position={[message.location.latitude, message.location.longitude]}
-            icon={getIconForSightingType(message.sightingType, message.timestamp)}
+            key={marker.id}
+            position={[marker.location.latitude, marker.location.longitude]}
+            icon={marker.icon}
           >
             <Popup>
               <div className="min-w-[150px]">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`px-2 py-1 rounded text-xs font-semibold ${getSightingBadgeClasses(message.sightingType)}`}>
-                    {message.sightingType}
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${getSightingBadgeClasses(marker.sightingType)}`}>
+                    {marker.sightingType}
                   </span>
-                  <span className="text-xs text-gray-500">{formatRelativeTimeI18n(message.timestamp, t)}</span>
+                  <span className="text-xs text-gray-500">{formatRelativeTimeI18n(marker.timestamp, t)}</span>
                 </div>
                 <p className="text-xs text-gray-600">
-                  {message.location.latitude.toFixed(4)}, {message.location.longitude.toFixed(4)}
+                  {marker.location.latitude.toFixed(4)}, {marker.location.longitude.toFixed(4)}
                 </p>
               </div>
             </Popup>

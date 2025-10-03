@@ -103,8 +103,13 @@ export function useMessaging() {
     }
   };
 
-  const registerDevice = async (location: GeoLocation) => {
-    if (!token || !deviceId) {
+  const registerDevice = async (location: GeoLocation, fcmToken?: string, devId?: string) => {
+    // Use provided values or fall back to state
+    const tokenToUse = fcmToken || token;
+    const deviceIdToUse = devId || deviceId;
+
+    if (!tokenToUse || !deviceIdToUse) {
+      console.error('Cannot register device: missing token or deviceId');
       return false;
     }
 
@@ -115,7 +120,7 @@ export function useMessaging() {
           'Content-Type': 'application/json',
           'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
         },
-        body: JSON.stringify({ token, deviceId, location }),
+        body: JSON.stringify({ token: tokenToUse, deviceId: deviceIdToUse, location }),
       });
 
       if (!response.ok) {
@@ -125,7 +130,7 @@ export function useMessaging() {
       return true;
     } catch (err) {
       setError('Failed to register device');
-      console.error(err);
+      console.error('Device registration error:', err);
       return false;
     }
   };

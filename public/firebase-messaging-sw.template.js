@@ -1,17 +1,18 @@
-// Firebase Cloud Messaging Service Worker
-// This runs in the background to handle push notifications
+// Firebase Cloud Messaging Service Worker TEMPLATE
+// This template is used by scripts/generate-sw.js to create the actual service worker
+// DO NOT use this file directly - it will not work without environment variable substitution
 
 importScripts('https://www.gstatic.com/firebasejs/12.3.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/12.3.0/firebase-messaging-compat.js');
 
-// Initialize the Firebase app in the service worker
+// Firebase configuration will be injected here by the build script
 firebase.initializeApp({
-  apiKey: 'AIzaSyAf6EhR0Z7qVSGLIT4_nkkIS3SyYtG8pE0',
-  authDomain: 'defroster-21a47.firebaseapp.com',
-  projectId: 'defroster-21a47',
-  storageBucket: 'defroster-21a47.firebasestorage.app',
-  messagingSenderId: '1098585951719',
-  appId: '1:1098585951719:web:b91c3c8a90ea16d6424142',
+  apiKey: '${NEXT_PUBLIC_FIREBASE_API_KEY}',
+  authDomain: '${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}',
+  projectId: '${NEXT_PUBLIC_FIREBASE_PROJECT_ID}',
+  storageBucket: '${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}',
+  messagingSenderId: '${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}',
+  appId: '${NEXT_PUBLIC_FIREBASE_APP_ID}',
 });
 
 const messaging = firebase.messaging();
@@ -26,8 +27,8 @@ messaging.onBackgroundMessage((payload) => {
 
   const notificationOptions = {
     body: notificationBody,
-    icon: '/icon-192x192.png',
-    badge: '/badge-72x72.png',
+    icon: '/appicon/defroster-192x192.png',
+    badge: '/appicon/defroster-64x64.png',
     tag: 'sighting-alert',
     requireInteraction: true,
     data: payload.data,
@@ -47,7 +48,7 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       // If a window is already open, focus it
       for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
+        if (client.url.includes(self.location.origin)) {
           return client.focus();
         }
       }

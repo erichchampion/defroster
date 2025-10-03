@@ -5,7 +5,7 @@ import { adminMessaging } from '@/lib/firebase/admin';
 import { Message } from '@/lib/types/message';
 import { validateLocation } from '@/lib/utils/validation';
 import { DEFAULT_RADIUS_MILES } from '@/lib/constants/app';
-import { MESSAGE_EXPIRATION_MS } from '@/lib/constants/time';
+import { MESSAGE_EXPIRATION_MS, TIMESTAMP_TOLERANCE_MS } from '@/lib/constants/time';
 import { validateApiKey } from '@/lib/middleware/auth';
 import { applyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit';
 
@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
 
     // Validate timestamp (if provided, ensure it's within reasonable bounds)
     const serverTime = Date.now();
-    const TIMESTAMP_TOLERANCE_MS = 60000; // 1 minute tolerance
 
     if (timestamp && Math.abs(timestamp - serverTime) > TIMESTAMP_TOLERANCE_MS) {
       return NextResponse.json(
@@ -109,8 +108,8 @@ export async function POST(request: NextRequest) {
       messageId,
       notifiedDevices: devices.length,
     });
-  } catch {
-    console.error('Error in send-message');
+  } catch (error) {
+    console.error('Error in send-message:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

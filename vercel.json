@@ -1,0 +1,6 @@
+{
+  "crons": [{
+    "path": "/api/cleanup-messages",
+    "schedule": "0 10 * * *"
+  }]
+}

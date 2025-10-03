@@ -192,6 +192,7 @@ Open [http://localhost:3000](http://localhost:3000) and grant location permissio
    - Update `ALLOWED_ORIGIN` in environment variables
 
 4. **Set Up Automated Cleanup** (Optional but recommended):
+   (Now configured through the vercel.json file)
    - In Vercel project → Settings → Cron Jobs
    - Create a new cron job:
      - Path: `/api/cleanup-messages`

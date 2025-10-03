@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Messages collection - read-only for all, write via API only
+    match /messages/{messageId} {
+      allow read: if true;
+      allow write: if false; // Only server-side via Admin SDK
+    }
+
+    // Devices collection - managed via API only
+    match /devices/{deviceId} {
+      allow read, write: if false; // Only server-side via Admin SDK
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

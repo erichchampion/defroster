@@ -1,0 +1,72 @@
+{
+  "app": {
+    "name": "Defroster",
+    "title": "Defroster - Reportar Avistamientos",
+    "description": "Alertas de seguridad en tiempo real basadas en ubicación para avistamientos de ICE, Ejército y Policía en tu área",
+    "applicationName": "Defroster",
+    "keywords": "seguridad, alertas, comunidad, basado en ubicación, avistamientos"
+  },
+  "locationPermission": {
+    "heading": "Se Requiere Permiso de Ubicación",
+    "description": "Esta aplicación necesita acceso a tu ubicación para enviar y recibir alertas de usuarios cercanos dentro de un radio de 5 millas.",
+    "buttonEnable": "Habilitar Acceso a Ubicación",
+    "buttonLoading": "Obteniendo Ubicación...",
+    "privacyNotice": {
+      "heading": "Aviso de Privacidad",
+      "locationUsage": "Tu ubicación se usa únicamente para encontrar alertas cercanas",
+      "serverDeletion": "Los reportes se eliminan del servidor después de 1 hora",
+      "localDeletion": "Los reportes se eliminan de tu teléfono después de 1 semana",
+      "locationRandomization": "Tu ubicación se aleatoriza a la cuadra más cercana (~250 pies)",
+      "noPersonalData": "Nunca se almacenan datos personales",
+      "revokeAccess": "Puedes revocar el acceso a la ubicación en cualquier momento"
+    },
+    "story": {
+      "paragraph1": "En las primeras horas del 2 de octubre, un edificio de apartamentos en South Shore Drive en Chicago fue destrozado por una redada federal. Agentes de Border Patrol, el FBI y la ATF irrumpieron en el complejo de cinco pisos con helicópteros, vehículos blindados y granadas aturdidoras. Las familias fueron sacadas de sus hogares, esposadas con bridas en la calle—algunas sin ropa—y dejadas afuera durante horas. Al amanecer, todos menos 37 fueron liberados, pero los residentes regresaron a apartamentos destrozados y una comunidad profundamente conmocionada.",
+      "paragraph2": "Incidentes como este resaltan la necesidad urgente de herramientas que protejan e informen. {appName} es una aplicación anónima y de {openSourceLink} que permite a los usuarios reportar actividad de Immigration and Customs Enforcement (ICE) con solo tocar su pantalla. La plataforma nunca almacena datos personales, elimina automáticamente los reportes del servidor después de una hora y alerta a comunidades dentro de un radio de cinco millas. Con Defroster, las personas pueden mantenerse seguras, informadas y conectadas, mientras permanecen completamente anónimas.",
+      "openSourceText": "código abierto"
+    }
+  },
+  "main": {
+    "heading": "Defroster: Reportar Avistamientos",
+    "subtitle": "Reporta y ve avistamientos dentro de 5 millas • Se eliminan automáticamente del servidor después de 1 hora",
+    "offlineMode": "⚠ Modo sin conexión - viendo avistamientos en caché",
+    "notificationsEnabled": "✓ Notificaciones habilitadas",
+    "notificationsUnavailable": "⚠ Notificaciones push no disponibles (la aplicación aún funciona para ver/enviar)",
+    "enableNotificationsButton": "Habilitar Notificaciones Push",
+    "loadingMessage": "Configurando mensajería...",
+    "sightingsMapHeading": "Mapa de Avistamientos",
+    "nearbySightingsListHeading": "Lista de Avistamientos Cercanos"
+  },
+  "messageForm": {
+    "heading": "Reportar Tipo de Avistamiento",
+    "sightingTypes": {
+      "ice": "ICE (Immigration and Customs Enforcement)",
+      "army": "Ejército",
+      "police": "Policía"
+    },
+    "currentLocationLabel": "Tu ubicación actual",
+    "submitButton": "Reportar Avistamiento",
+    "submitButtonLoading": "Enviando..."
+  },
+  "messageList": {
+    "noSightings": "No hay avistamientos cercanos",
+    "beTheFirst": "¡Sé el primero en reportar un avistamiento!",
+    "sightingLocation": "Ubicación del Avistamiento",
+    "withinRadius": "Dentro de {radius} millas de ti"
+  },
+  "sightingMap": {
+    "yourLocation": "Tu Ubicación",
+    "loadingMap": "Cargando mapa..."
+  },
+  "time": {
+    "justNow": "justo ahora",
+    "minuteAgo": "hace {count} minuto",
+    "minutesAgo": "hace {count} minutos",
+    "hourAgo": "hace {count} hora",
+    "hoursAgo": "hace {count} horas",
+    "dayAgo": "hace {count} día",
+    "daysAgo": "hace {count} días",
+    "weekAgo": "hace {count} semana",
+    "weeksAgo": "hace {count} semanas"
+  }
+}

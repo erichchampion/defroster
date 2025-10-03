@@ -1,8 +1,7 @@
-import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ServicesProvider } from "@/lib/contexts/ServicesContext";
-import { I18nProvider } from "@/lib/contexts/I18nContext";
+import { ClientProviders } from "./ClientProviders";
+import type { Metadata, Viewport } from "next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,7 +40,7 @@ export const metadata: Metadata = {
       { url: "/appicon/defroster-120x120.png", sizes: "120x120", type: "image/png" },
       { url: "/appicon/defroster-152x152.png", sizes: "152x152", type: "image/png" },
       { url: "/appicon/defroster-167x167.png", sizes: "167x167", type: "image/png" },
-      { url: "/appicon/defroster-180x180.png", sizes: "180x180", type: "image/png" },
+      { url: "/appicon/defroster-180x120.png", sizes: "180x180", type: "image/png" },
     ],
   },
 
@@ -101,11 +100,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <I18nProvider>
-          <ServicesProvider>
-            {children}
-          </ServicesProvider>
-        </I18nProvider>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

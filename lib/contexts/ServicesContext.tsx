@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useMemo } from 'react';
 import { FCMMessagingService } from '@/lib/services/fcm-messaging-service';
 import { IndexedDBStorageService } from '@/lib/services/indexeddb-storage-service';
 
@@ -23,10 +23,11 @@ export function ServicesProvider({
   storageService
 }: ServicesProviderProps) {
   // Use provided services (for testing) or create new ones (for production)
-  const services: ServicesContextValue = {
+  // Memoize to avoid recreating services on every render
+  const services: ServicesContextValue = useMemo(() => ({
     messagingService: messagingService || new FCMMessagingService(),
     storageService: storageService || new IndexedDBStorageService(),
-  };
+  }), [messagingService, storageService]);
 
   return (
     <ServicesContext.Provider value={services}>

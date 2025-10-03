@@ -10,7 +10,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { geohashQueryBounds, distanceBetween } from 'geofire-common';
-import { db } from '@/lib/firebase/config';
+import { getDb } from '@/lib/firebase/config';
 import { IDataService } from '@/lib/abstractions/data-service';
 import { Message, UserDevice, GeoLocation } from '@/lib/types/message';
 import { geohashForLocation } from 'geofire-common';
@@ -30,7 +30,7 @@ export class FirestoreDataService implements IDataService {
       expiresAt: Timestamp.fromMillis(message.expiresAt),
     };
 
-    const docRef = await addDoc(collection(db, MESSAGES_COLLECTION), messageData);
+    const docRef = await addDoc(collection(getDb(), MESSAGES_COLLECTION), messageData);
     return docRef.id;
   }
 
@@ -47,7 +47,7 @@ export class FirestoreDataService implements IDataService {
 
     for (const bound of bounds) {
       const q = query(
-        collection(db, MESSAGES_COLLECTION),
+        collection(getDb(), MESSAGES_COLLECTION),
         where('geohash', '>=', bound[0]),
         where('geohash', '<=', bound[1])
       );
@@ -87,13 +87,13 @@ export class FirestoreDataService implements IDataService {
   async deleteExpiredMessages(): Promise<number> {
     const now = Timestamp.now();
     const q = query(
-      collection(db, MESSAGES_COLLECTION),
+      collection(getDb(), MESSAGES_COLLECTION),
       where('expiresAt', '<=', now)
     );
 
     const snapshot = await getDocs(q);
     const deletePromises = snapshot.docs.map((document) =>
-      deleteDoc(doc(db, MESSAGES_COLLECTION, document.id))
+      deleteDoc(doc(getDb(), MESSAGES_COLLECTION, document.id))
     );
 
     await Promise.all(deletePromises);
@@ -101,7 +101,7 @@ export class FirestoreDataService implements IDataService {
   }
 
   async registerDevice(device: UserDevice): Promise<void> {
-    await setDoc(doc(db, DEVICES_COLLECTION, device.deviceId), {
+    await setDoc(doc(getDb(), DEVICES_COLLECTION, device.deviceId), {
       deviceId: device.deviceId,
       token: device.token,
       geohash: device.geohash,
@@ -122,7 +122,7 @@ export class FirestoreDataService implements IDataService {
 
     for (const bound of bounds) {
       const q = query(
-        collection(db, DEVICES_COLLECTION),
+        collection(getDb(), DEVICES_COLLECTION),
         where('geohash', '>=', bound[0].substring(0, 7)),
         where('geohash', '<=', bound[1].substring(0, 7) + '~')
       );
@@ -151,7 +151,7 @@ export class FirestoreDataService implements IDataService {
   async updateDeviceLocation(deviceId: string, location: GeoLocation): Promise<void> {
     const geohash = geohashForLocation([location.latitude, location.longitude], 7);
     await setDoc(
-      doc(db, DEVICES_COLLECTION, deviceId),
+      doc(getDb(), DEVICES_COLLECTION, deviceId),
       {
         geohash,
         updatedAt: Timestamp.now(),
@@ -161,6 +161,6 @@ export class FirestoreDataService implements IDataService {
   }
 
   async removeDevice(deviceId: string): Promise<void> {
-    await deleteDoc(doc(db, DEVICES_COLLECTION, deviceId));
+    await deleteDoc(doc(getDb(), DEVICES_COLLECTION, deviceId));
   }
 }

@@ -12,24 +12,27 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-let app: FirebaseApp;
+let app: FirebaseApp | undefined;
+let db: Firestore | undefined;
 let messaging: Messaging | null = null;
 let messagingInitPromise: Promise<Messaging | null> | null = null;
 
-// Initialize Firebase
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApps()[0];
+// Initialize Firebase (client-side only)
+if (typeof window !== 'undefined') {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
+  }
+
+  // Initialize Firestore
+  db = getFirestore(app);
 }
 
-// Initialize Firestore
-const db: Firestore = getFirestore(app);
-
 // Initialize Firebase Cloud Messaging (only in browser)
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && app) {
   messagingInitPromise = isSupported().then((supported) => {
-    if (supported) {
+    if (supported && app) {
       messaging = getMessaging(app);
       console.log('Firebase Messaging initialized successfully');
       return messaging;
@@ -61,4 +64,13 @@ export async function getMessagingInstance(): Promise<Messaging | null> {
   return null;
 }
 
+// Export with type guards for SSR safety
 export { app, db, messaging };
+
+// Helper to ensure db is initialized
+export function getDb(): Firestore {
+  if (!db) {
+    throw new Error('Firestore not initialized. This should only be called on the client.');
+  }
+  return db;
+}

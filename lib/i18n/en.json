@@ -35,7 +35,11 @@
     "enableNotificationsButton": "Enable Push Notifications",
     "loadingMessage": "Setting up messaging...",
     "sightingsMapHeading": "Sightings Map",
-    "nearbySightingsListHeading": "Nearby Sightings List"
+    "nearbySightingsListHeading": "Nearby Sightings List",
+    "iosNotificationGuide": {
+      "heading": "📱 iOS Users:",
+      "instructions": "To enable push notifications on iOS, tap the Share button and select \"Add to Home Screen\""
+    }
   },
   "messageForm": {
     "heading": "Report Sighting Type",

@@ -35,7 +35,11 @@
     "enableNotificationsButton": "Habilitar Notificaciones Push",
     "loadingMessage": "Configurando mensajería...",
     "sightingsMapHeading": "Mapa de Avistamientos",
-    "nearbySightingsListHeading": "Lista de Avistamientos Cercanos"
+    "nearbySightingsListHeading": "Lista de Avistamientos Cercanos",
+    "iosNotificationGuide": {
+      "heading": "📱 Usuarios de iOS:",
+      "instructions": "Para habilitar notificaciones push en iOS, toca el botón Compartir y selecciona \"Agregar a la pantalla de inicio\""
+    }
   },
   "messageForm": {
     "heading": "Reportar Tipo de Avistamiento",

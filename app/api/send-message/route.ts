@@ -4,10 +4,11 @@ import { getDataService } from '@/lib/services/data-service-singleton';
 import { adminMessaging } from '@/lib/firebase/admin';
 import { Message } from '@/lib/types/message';
 import { validateLocation } from '@/lib/utils/validation';
-import { DEFAULT_RADIUS_MILES } from '@/lib/constants/app';
+import { DEFAULT_RADIUS_MILES, GEOHASH_PRECISION_DEVICE } from '@/lib/constants/app';
 import { MESSAGE_EXPIRATION_MS, TIMESTAMP_TOLERANCE_MS } from '@/lib/constants/time';
 import { validateApiKey } from '@/lib/middleware/auth';
 import { applyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit';
+import { logger } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   // Get service instance inside function for better testability
@@ -49,11 +50,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create message with geohash (7 characters for ~76m precision)
+    // Create message with geohash
     const geohash = geohashForLocation([
       location.latitude,
       location.longitude,
-    ], 7);
+    ], GEOHASH_PRECISION_DEVICE);
 
     // Always use server timestamp to prevent manipulation
     const now = serverTime;
@@ -91,16 +92,24 @@ export async function POST(request: NextRequest) {
 
       try {
         const response = await adminMessaging.sendEachForMulticast(notificationMessage);
-        console.log(`Successfully sent ${response.successCount} notifications`);
+        logger.info('API:send-message', `Successfully sent ${response.successCount} notifications`);
 
         if (response.failureCount > 0) {
-          console.log(`Failed to send ${response.failureCount} notifications`);
+          logger.warn('API:send-message', `Failed to send ${response.failureCount} notifications`);
         }
+
+        // Record notifications for devices that were successfully notified
+        // This prevents duplicate notifications in the periodic function
+        const recordPromises = devices.map((device) =>
+          dataService.recordNotification(messageId, device.deviceId)
+        );
+        await Promise.all(recordPromises);
+        logger.info('API:send-message', `Recorded ${devices.length} notifications`);
       } catch (error) {
-        console.error('Error sending notifications:', error);
+        logger.error('API:send-message', 'Error sending notifications:', error);
       }
     } else if (devices.length > 0) {
-      console.warn('Firebase Admin Messaging not initialized - notifications not sent');
+      logger.warn('API:send-message', 'Firebase Admin Messaging not initialized - notifications not sent');
     }
 
     return NextResponse.json({
@@ -109,7 +118,7 @@ export async function POST(request: NextRequest) {
       notifiedDevices: devices.length,
     });
   } catch (error) {
-    console.error('Error in send-message:', error);
+    logger.error('API:send-message', 'Error in send-message:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

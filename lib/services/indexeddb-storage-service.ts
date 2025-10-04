@@ -1,10 +1,12 @@
 import { Message, GeoLocation } from '@/lib/types/message';
 import { ILocalStorageService } from '@/lib/abstractions/local-storage-service';
 import { distanceBetween } from 'geofire-common';
+import { GEOHASH_PRECISION_AREA } from '@/lib/constants/app';
 
 const DB_NAME = 'DefrosterDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented for schema change
 const MESSAGES_STORE = 'messages';
+const METADATA_STORE = 'metadata'; // New store for fetch times
 
 export class IndexedDBStorageService implements ILocalStorageService {
   private db: IDBDatabase | null = null;
@@ -44,6 +46,12 @@ export class IndexedDBStorageService implements ILocalStorageService {
           messageStore.createIndex('longitude', 'location.longitude', { unique: false });
 
           console.log('Created messages object store with indexes');
+        }
+
+        // Create metadata object store for fetch timestamps
+        if (!db.objectStoreNames.contains(METADATA_STORE)) {
+          db.createObjectStore(METADATA_STORE, { keyPath: 'key' });
+          console.log('Created metadata object store');
         }
       };
     });
@@ -350,5 +358,79 @@ export class IndexedDBStorageService implements ILocalStorageService {
   async deleteMessagesOlderThanOneWeek(): Promise<number> {
     const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     return this.deleteOldMessages(ONE_WEEK_MS);
+  }
+
+  /**
+   * Get the last fetch timestamp for a specific geohash area
+   * Uses 5-character geohash for ~5km precision (roughly matches our 5-mile radius)
+   */
+  async getLastFetchTime(geohash: string): Promise<number> {
+    if (!this.db) {
+      await this.initialize();
+    }
+
+    if (!this.db) {
+      throw new Error('IndexedDB not initialized');
+    }
+
+    // Use geohash area precision for grouping
+    const areaKey = `fetch_${geohash.substring(0, GEOHASH_PRECISION_AREA)}`;
+
+    return new Promise((resolve) => {
+      const transaction = this.db!.transaction([METADATA_STORE], 'readonly');
+      const store = transaction.objectStore(METADATA_STORE);
+      const request = store.get(areaKey);
+
+      request.onsuccess = () => {
+        const result = request.result;
+        if (result && result.timestamp) {
+          resolve(result.timestamp);
+        } else {
+          // No previous fetch for this area, return 0 (epoch start)
+          resolve(0);
+        }
+      };
+
+      request.onerror = () => {
+        console.error('Failed to get last fetch time:', request.error);
+        // On error, return 0 to trigger full fetch
+        resolve(0);
+      };
+    });
+  }
+
+  /**
+   * Update the last fetch timestamp for a specific geohash area
+   */
+  async setLastFetchTime(geohash: string, timestamp: number): Promise<void> {
+    if (!this.db) {
+      await this.initialize();
+    }
+
+    if (!this.db) {
+      throw new Error('IndexedDB not initialized');
+    }
+
+    // Use geohash area precision for grouping
+    const areaKey = `fetch_${geohash.substring(0, GEOHASH_PRECISION_AREA)}`;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([METADATA_STORE], 'readwrite');
+      const store = transaction.objectStore(METADATA_STORE);
+      const request = store.put({
+        key: areaKey,
+        timestamp,
+        geohash: geohash.substring(0, GEOHASH_PRECISION_AREA),
+      });
+
+      request.onsuccess = () => {
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Failed to set last fetch time:', request.error);
+        reject(request.error);
+      };
+    });
   }
 }

@@ -4,6 +4,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   deleteDoc,
   doc,
   setDoc,
@@ -14,7 +15,7 @@ import { getDb } from '@/lib/firebase/config';
 import { IDataService } from '@/lib/abstractions/data-service';
 import { Message, UserDevice, GeoLocation } from '@/lib/types/message';
 import { geohashForLocation } from 'geofire-common';
-import { MESSAGES_COLLECTION, DEVICES_COLLECTION } from '@/lib/constants/app';
+import { MESSAGES_COLLECTION, DEVICES_COLLECTION, GEOHASH_PRECISION_DEVICE } from '@/lib/constants/app';
 import { MILES_TO_KM, KM_TO_MILES } from '@/lib/constants/conversions';
 
 export class FirestoreDataService implements IDataService {
@@ -123,8 +124,8 @@ export class FirestoreDataService implements IDataService {
     for (const bound of bounds) {
       const q = query(
         collection(getDb(), DEVICES_COLLECTION),
-        where('geohash', '>=', bound[0].substring(0, 7)),
-        where('geohash', '<=', bound[1].substring(0, 7) + '~')
+        where('geohash', '>=', bound[0].substring(0, GEOHASH_PRECISION_DEVICE)),
+        where('geohash', '<=', bound[1].substring(0, GEOHASH_PRECISION_DEVICE) + '~')
       );
       promises.push(getDocs(q));
     }
@@ -149,7 +150,7 @@ export class FirestoreDataService implements IDataService {
   }
 
   async updateDeviceLocation(deviceId: string, location: GeoLocation): Promise<void> {
-    const geohash = geohashForLocation([location.latitude, location.longitude], 7);
+    const geohash = geohashForLocation([location.latitude, location.longitude], GEOHASH_PRECISION_DEVICE);
     await setDoc(
       doc(getDb(), DEVICES_COLLECTION, deviceId),
       {
@@ -162,5 +163,77 @@ export class FirestoreDataService implements IDataService {
 
   async removeDevice(deviceId: string): Promise<void> {
     await deleteDoc(doc(getDb(), DEVICES_COLLECTION, deviceId));
+  }
+
+  async recordNotification(messageId: string, deviceId: string): Promise<void> {
+    const notificationId = `${messageId}_${deviceId}`;
+    const expiresAt = Timestamp.fromMillis(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+
+    await setDoc(doc(getDb(), 'notifications', notificationId), {
+      messageId,
+      deviceId,
+      sentAt: Timestamp.now(),
+      expiresAt,
+    });
+  }
+
+  async wasDeviceNotified(messageId: string, deviceId: string): Promise<boolean> {
+    const notificationId = `${messageId}_${deviceId}`;
+    const docRef = doc(getDb(), 'notifications', notificationId);
+    const docSnap = await getDoc(docRef);
+
+    return docSnap.exists();
+  }
+
+  async getUnnotifiedDevices(messageId: string, devices: UserDevice[]): Promise<UserDevice[]> {
+    if (devices.length === 0) return [];
+
+    const notificationChecks = await Promise.all(
+      devices.map(async (device) => {
+        const wasNotified = await this.wasDeviceNotified(messageId, device.deviceId);
+        return { device, wasNotified };
+      })
+    );
+
+    return notificationChecks
+      .filter((check) => !check.wasNotified)
+      .map((check) => check.device);
+  }
+
+  async getActiveMessages(): Promise<Message[]> {
+    const now = Timestamp.now();
+    const q = query(
+      collection(getDb(), MESSAGES_COLLECTION),
+      where('expiresAt', '>', now)
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        sightingType: data.sightingType,
+        location: data.location,
+        timestamp: data.timestamp.toMillis(),
+        geohash: data.geohash,
+        expiresAt: data.expiresAt.toMillis(),
+      };
+    });
+  }
+
+  async deleteExpiredNotifications(): Promise<number> {
+    const now = Timestamp.now();
+    const q = query(
+      collection(getDb(), 'notifications'),
+      where('expiresAt', '<=', now)
+    );
+
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map((document) =>
+      deleteDoc(doc(getDb(), 'notifications', document.id))
+    );
+
+    await Promise.all(deletePromises);
+    return snapshot.size;
   }
 }

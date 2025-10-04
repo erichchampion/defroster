@@ -75,7 +75,7 @@ describe('IndexedDBStorageService', () => {
       }, 0);
 
       await expect(initPromise).resolves.toBeUndefined();
-      expect(global.indexedDB.open).toHaveBeenCalledWith('DefrosterDB', 1);
+      expect(global.indexedDB.open).toHaveBeenCalledWith('DefrosterDB', 2);
     });
 
     it('should create object store on upgrade', async () => {

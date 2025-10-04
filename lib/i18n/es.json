@@ -19,7 +19,7 @@
     "privacyNotice": {
       "heading": "Aviso de Privacidad",
       "locationUsage": "Tu ubicación se usa únicamente para encontrar alertas cercanas",
-      "serverDeletion": "Los reportes se eliminan del servidor después de 1 hora",
+      "serverDeletion": "Los reportes se eliminan del servidor después de 1 día",
       "localDeletion": "Los reportes se eliminan de tu teléfono después de 1 semana",
       "locationRandomization": "Tu ubicación se aleatoriza a la cuadra más cercana (~250 pies)",
       "noPersonalData": "Nunca se almacenan datos personales",
@@ -27,13 +27,13 @@
     },
     "story": {
       "paragraph1": "En las primeras horas del 2 de octubre, un edificio de apartamentos en South Shore Drive en Chicago fue destrozado por una redada federal. Agentes de Border Patrol, el FBI y la ATF irrumpieron en el complejo de cinco pisos con helicópteros, vehículos blindados y granadas aturdidoras. Las familias fueron sacadas de sus hogares, esposadas con bridas en la calle—algunas sin ropa—y dejadas afuera durante horas. Al amanecer, todos menos 37 fueron liberados, pero los residentes regresaron a apartamentos destrozados y una comunidad profundamente conmocionada.",
-      "paragraph2": "Incidentes como este resaltan la necesidad urgente de herramientas que protejan e informen. {appName} es una aplicación anónima y de {openSourceLink} que permite a los usuarios reportar actividad de Immigration and Customs Enforcement (ICE) con solo tocar su pantalla. La plataforma nunca almacena datos personales, elimina automáticamente los reportes del servidor después de una hora y alerta a comunidades dentro de un radio de cinco millas. Con Defroster, las personas pueden mantenerse seguras, informadas y conectadas, mientras permanecen completamente anónimas.",
+      "paragraph2": "Incidentes como este resaltan la necesidad urgente de herramientas que protejan e informen. {appName} es una aplicación anónima y de {openSourceLink} que permite a los usuarios reportar actividad de Immigration and Customs Enforcement (ICE) con solo tocar su pantalla. La plataforma nunca almacena datos personales, elimina automáticamente los reportes del servidor después de un día y alerta a comunidades dentro de un radio de cinco millas. Con Defroster, las personas pueden mantenerse seguras, informadas y conectadas, mientras permanecen completamente anónimas.",
       "openSourceText": "código abierto"
     }
   },
   "main": {
     "heading": "Defroster: Reportar Avistamientos",
-    "subtitle": "Reporta y ve avistamientos dentro de 5 millas • Se eliminan automáticamente del servidor después de 1 hora",
+    "subtitle": "Reporta y ve avistamientos dentro de 5 millas • Se eliminan automáticamente del servidor después de 1 día",
     "offlineMode": "⚠ Modo sin conexión - viendo avistamientos en caché",
     "notificationsEnabled": "✓ Notificaciones habilitadas",
     "notificationsUnavailable": "⚠ Notificaciones push no disponibles (la aplicación aún funciona para ver/enviar)",

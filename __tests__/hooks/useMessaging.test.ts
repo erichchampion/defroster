@@ -28,6 +28,8 @@ const mockStorageService = {
   deleteExpiredMessages: jest.fn(),
   deleteMessagesOlderThanOneWeek: jest.fn(),
   clearAll: jest.fn(),
+  getLastFetchTime: jest.fn(),
+  setLastFetchTime: jest.fn(),
 };
 
 describe('useMessaging', () => {
@@ -58,6 +60,8 @@ describe('useMessaging', () => {
     mockStorageService.getAllMessages.mockResolvedValue([]);
     mockStorageService.deleteMessage.mockResolvedValue(undefined);
     mockStorageService.deleteExpiredMessages.mockResolvedValue(0);
+    mockStorageService.getLastFetchTime.mockResolvedValue(0);
+    mockStorageService.setLastFetchTime.mockResolvedValue(undefined);
     mockStorageService.deleteMessagesOlderThanOneWeek.mockResolvedValue(0);
     mockStorageService.clearAll.mockResolvedValue(undefined);
 
@@ -347,7 +351,6 @@ describe('useMessaging', () => {
           sightingType: 'ICE' as const,
           location: { latitude: 37.7849, longitude: -122.4294 },
           timestamp: Date.now(),
-          senderLocation: { latitude: 37.7749, longitude: -122.4194 },
           geohash: 'hash1',
           expiresAt: Date.now() + 3600000,
         },
@@ -356,7 +359,6 @@ describe('useMessaging', () => {
           sightingType: 'Police' as const,
           location: { latitude: 37.7850, longitude: -122.4295 },
           timestamp: Date.now(),
-          senderLocation: { latitude: 37.7750, longitude: -122.4195 },
           geohash: 'hash2',
           expiresAt: Date.now() + 3600000,
         },
@@ -400,7 +402,6 @@ describe('useMessaging', () => {
           sightingType: 'Army' as const,
           location: { latitude: 37.7849, longitude: -122.4294 },
           timestamp: Date.now(),
-          senderLocation: { latitude: 37.7749, longitude: -122.4194 },
           geohash: 'hash_local',
           expiresAt: Date.now() + 3600000,
         },
@@ -430,7 +431,6 @@ describe('useMessaging', () => {
           sightingType: 'ICE' as const,
           location: { latitude: 37.7849, longitude: -122.4294 },
           timestamp: Date.now(),
-          senderLocation: { latitude: 37.7749, longitude: -122.4194 },
           geohash: 'hash_fb',
           expiresAt: Date.now() + 3600000,
         },
@@ -483,7 +483,6 @@ describe('useMessaging', () => {
         sightingType: 'ICE' as const,
         location: { latitude: 37.7849, longitude: -122.4294 },
         timestamp: Date.now(),
-        senderLocation: { latitude: 37.7749, longitude: -122.4194 },
         geohash: 'hash_new',
         expiresAt: Date.now() + 3600000,
       };
@@ -550,7 +549,6 @@ describe('useMessaging', () => {
             sightingType: 'ICE' as const,
             location: { latitude: 37.7849, longitude: -122.4294 },
             timestamp: Date.now(),
-            senderLocation: { latitude: 37.7749, longitude: -122.4194 },
             geohash: 'hash1',
             expiresAt: Date.now() + 3600000,
           },

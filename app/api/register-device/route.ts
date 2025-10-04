@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { geohashForLocation } from 'geofire-common';
 import { getDataService } from '@/lib/services/data-service-singleton';
 import { validateLocation } from '@/lib/utils/validation';
+import { GEOHASH_PRECISION_DEVICE } from '@/lib/constants/app';
 import { validateApiKey } from '@/lib/middleware/auth';
 import { applyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit';
+import { logger } from '@/lib/utils/logger';
 
 const dataService = getDataService();
 
@@ -58,8 +60,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use 7-character geohash for ~76m precision (city block level)
-    const geohash = geohashForLocation([location.latitude, location.longitude], 7);
+    // Use geohash for device location
+    const geohash = geohashForLocation([location.latitude, location.longitude], GEOHASH_PRECISION_DEVICE);
 
     await dataService.registerDevice({
       deviceId,
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error registering device:', error);
+    logger.error('API:register-device', 'Error registering device:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

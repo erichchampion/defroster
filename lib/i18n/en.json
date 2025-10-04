@@ -9,6 +9,11 @@
   "locationPermission": {
     "heading": "Location Permission Required",
     "description": "This app needs access to your location to send and receive alerts from nearby users within a 5-mile radius.",
+    "iosInstructions": "On iOS, enable {locationServicesLink} for Safari Websites and save this website as an app to your {homeScreenLink}.",
+    "locationServicesText": "Location Services",
+    "locationServicesUrl": "https://support.apple.com/en-us/102515",
+    "homeScreenText": "Home Screen",
+    "homeScreenUrl": "https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios",
     "buttonEnable": "Enable Location Access",
     "buttonLoading": "Getting Location...",
     "privacyNotice": {

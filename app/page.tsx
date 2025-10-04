@@ -40,6 +40,20 @@ export default function Home() {
   } = useMessaging();
 
   const [isReady, setIsReady] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  // Detect if running as standalone PWA and if on iOS
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        (window.navigator as Window['navigator'] & { standalone?: boolean }).standalone === true;
+      setIsStandalone(standalone);
+
+      const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream;
+      setIsIOS(ios);
+    }
+  }, []);
 
   // Register service worker on mount
   useEffect(() => {
@@ -186,7 +200,31 @@ export default function Home() {
               </p>
             )}
           </div>
-          {permission !== 'granted' && (
+          {permission !== 'granted' && !isIOS && (
+            <button
+              onClick={async () => {
+                const fcmToken = await requestPermission();
+                if (fcmToken && location && deviceId) {
+                  await registerDevice(location, fcmToken, deviceId);
+                }
+              }}
+              className="mt-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded"
+            >
+              {t.main.enableNotificationsButton}
+            </button>
+          )}
+          {permission !== 'granted' && isIOS && !isStandalone && (
+            <div className="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              <p className="font-semibold">{t.main.iosNotificationGuide.heading}</p>
+              <p className="mt-1">
+                {t.main.iosNotificationGuide.instructions}
+                <svg className="inline w-4 h-4 mx-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                </svg>
+              </p>
+            </div>
+          )}
+          {permission !== 'granted' && isIOS && isStandalone && (
             <button
               onClick={async () => {
                 const fcmToken = await requestPermission();

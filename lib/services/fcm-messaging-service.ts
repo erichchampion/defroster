@@ -49,6 +49,12 @@ export class FCMMessagingService implements IMessagingService {
   }
 
   async requestPermission(): Promise<boolean> {
+    // Check if Notification API is available
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      console.warn('Notification API not supported in this browser');
+      return false;
+    }
+
     try {
       const permission = await Notification.requestPermission();
       return permission === 'granted';

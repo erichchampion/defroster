@@ -18,7 +18,12 @@ export function useMessaging() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setPermission(Notification.permission);
+      // Check if Notification API is available before accessing it
+      if ('Notification' in window) {
+        setPermission(Notification.permission);
+      } else {
+        setPermission('denied');
+      }
 
       // Get or create device ID
       const id = getOrCreateDeviceId(STORAGE_KEYS.DEVICE_ID);

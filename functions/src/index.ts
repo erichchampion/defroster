@@ -1,5 +1,6 @@
-import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onRequest } from 'firebase-functions/v2/https';
 import { geohashQueryBounds } from 'geofire-common';
 import {
   MILES_TO_KM,
@@ -18,17 +19,13 @@ import { logger } from './logger';
 admin.initializeApp();
 
 /**
- * Scheduled function to clean up expired messages
- * Runs every 15 minutes
- */
-/**
  * Scheduled function to send notifications to newly-in-range devices
  * Runs every 15 minutes
  */
-export const sendPeriodicNotifications = functions.pubsub
-  .schedule('every 15 minutes')
-  .timeZone('America/New_York')
-  .onRun(async (context) => {
+export const sendPeriodicNotifications = onSchedule({
+  schedule: 'every 15 minutes',
+  timeZone: 'America/New_York',
+}, async (event) => {
     const db = admin.firestore();
     const messaging = admin.messaging();
     const now = admin.firestore.Timestamp.now();
@@ -51,7 +48,7 @@ export const sendPeriodicNotifications = functions.pubsub
 
       if (messagesSnapshot.empty) {
         logger.info('Function:sendPeriodicNotifications', 'No messages in notification window (last 30 minutes)');
-        return null;
+        return;
       }
 
       logger.info('Function:sendPeriodicNotifications', `Found ${messagesSnapshot.size} messages in notification window (last 30 minutes)`);
@@ -163,17 +160,16 @@ export const sendPeriodicNotifications = functions.pubsub
       }
 
       logger.info('Function:sendPeriodicNotifications', `Periodic notification job complete. Sent ${totalNotificationsSent} total notifications`);
-      return null;
     } catch (error) {
       logger.error('Function:sendPeriodicNotifications', 'Error in periodic notification job:', error);
       throw error;
     }
   });
 
-export const cleanupExpiredMessages = functions.pubsub
-  .schedule('every 15 minutes')
-  .timeZone('America/New_York') // Adjust to your timezone
-  .onRun(async (context) => {
+export const cleanupExpiredMessages = onSchedule({
+  schedule: 'every 15 minutes',
+  timeZone: 'America/New_York',
+}, async (event) => {
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
 
@@ -186,7 +182,7 @@ export const cleanupExpiredMessages = functions.pubsub
 
       if (snapshot.empty) {
         logger.info('Function:cleanupExpiredMessages', 'No expired messages to clean up');
-        return null;
+        return;
       }
 
       // Delete messages in batches (Firestore max 500 writes per batch)
@@ -206,7 +202,6 @@ export const cleanupExpiredMessages = functions.pubsub
       }
 
       logger.info('Function:cleanupExpiredMessages', `Successfully deleted ${deletedCount} expired messages`);
-      return null;
     } catch (error) {
       logger.error('Function:cleanupExpiredMessages', 'Error cleaning up expired messages:', error);
       throw error;
@@ -217,10 +212,10 @@ export const cleanupExpiredMessages = functions.pubsub
  * Scheduled function to clean up expired notification records
  * Runs every hour
  */
-export const cleanupExpiredNotifications = functions.pubsub
-  .schedule('every 1 hours')
-  .timeZone('America/New_York')
-  .onRun(async (context) => {
+export const cleanupExpiredNotifications = onSchedule({
+  schedule: 'every 1 hours',
+  timeZone: 'America/New_York',
+}, async (event) => {
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
 
@@ -233,7 +228,7 @@ export const cleanupExpiredNotifications = functions.pubsub
 
       if (snapshot.empty) {
         logger.info('Function:cleanupExpiredNotifications', 'No expired notification records to clean up');
-        return null;
+        return;
       }
 
       // Delete in batches
@@ -253,7 +248,6 @@ export const cleanupExpiredNotifications = functions.pubsub
       }
 
       logger.info('Function:cleanupExpiredNotifications', `Successfully deleted ${deletedCount} expired notification records`);
-      return null;
     } catch (error) {
       logger.error('Function:cleanupExpiredNotifications', 'Error cleaning up expired notification records:', error);
       throw error;
@@ -264,10 +258,10 @@ export const cleanupExpiredNotifications = functions.pubsub
  * Scheduled function to clean up old device registrations
  * Runs daily at 2 AM
  */
-export const cleanupOldDevices = functions.pubsub
-  .schedule('every day 02:00')
-  .timeZone('America/New_York') // Adjust to your timezone
-  .onRun(async (context) => {
+export const cleanupOldDevices = onSchedule({
+  schedule: 'every day 02:00',
+  timeZone: 'America/New_York',
+}, async (event) => {
     const db = admin.firestore();
     const sevenDaysAgo = admin.firestore.Timestamp.fromMillis(
       Date.now() - ONE_WEEK_MS
@@ -282,7 +276,7 @@ export const cleanupOldDevices = functions.pubsub
 
       if (snapshot.empty) {
         logger.info('Function:cleanupOldDevices', 'No old devices to clean up');
-        return null;
+        return;
       }
 
       // Delete devices in batches
@@ -302,7 +296,6 @@ export const cleanupOldDevices = functions.pubsub
       }
 
       logger.info('Function:cleanupOldDevices', `Successfully deleted ${deletedCount} old device registrations`);
-      return null;
     } catch (error) {
       logger.error('Function:cleanupOldDevices', 'Error cleaning up old devices:', error);
       throw error;
@@ -313,7 +306,7 @@ export const cleanupOldDevices = functions.pubsub
  * HTTP-triggered function for manual cleanup (for testing/emergency)
  * Requires authentication
  */
-export const manualCleanup = functions.https.onRequest(async (req, res) => {
+export const manualCleanup = onRequest(async (req, res) => {
   // Verify authorization
   const authHeader = req.headers.authorization;
   const expectedToken = process.env.CLEANUP_SECRET;

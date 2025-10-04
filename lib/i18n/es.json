@@ -9,6 +9,11 @@
   "locationPermission": {
     "heading": "Se Requiere Permiso de Ubicación",
     "description": "Esta aplicación necesita acceso a tu ubicación para enviar y recibir alertas de usuarios cercanos dentro de un radio de 5 millas.",
+    "iosInstructions": "En iOS, habilita {locationServicesLink} para Sitios Web de Safari y guarda este sitio web como una aplicación en tu {homeScreenLink}.",
+    "locationServicesText": "Servicios de Ubicación",
+    "locationServicesUrl": "https://support.apple.com/es-es/102515",
+    "homeScreenText": "pantalla de inicio",
+    "homeScreenUrl": "https://support.apple.com/es-es/guide/iphone/open-as-web-app-iphea86e5236/ios",
     "buttonEnable": "Habilitar Acceso a Ubicación",
     "buttonLoading": "Obteniendo Ubicación...",
     "privacyNotice": {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useI18n } from '@/lib/contexts/I18nContext';
 
 interface LocationPermissionProps {
@@ -11,6 +11,14 @@ export default function LocationPermission({ onRequestPermission }: LocationPerm
   const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream;
+      setIsIOS(ios);
+    }
+  }, []);
 
   const handleRequestPermission = async () => {
     setLoading(true);
@@ -80,9 +88,32 @@ export default function LocationPermission({ onRequestPermission }: LocationPerm
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">{t.locationPermission.heading}</h2>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-4">
               {t.locationPermission.description}
             </p>
+            {isIOS && (
+              <p className="text-gray-600">
+                {t.locationPermission.iosInstructions.split('{locationServicesLink}')[0]}
+                <a
+                  href={t.locationPermission.locationServicesUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  {t.locationPermission.locationServicesText}
+                </a>
+                {t.locationPermission.iosInstructions.split('{locationServicesLink}')[1].split('{homeScreenLink}')[0]}
+                <a
+                  href={t.locationPermission.homeScreenUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  {t.locationPermission.homeScreenText}
+                </a>
+                {t.locationPermission.iosInstructions.split('{homeScreenLink}')[1]}
+              </p>
+            )}
           </div>
 
         {error && (

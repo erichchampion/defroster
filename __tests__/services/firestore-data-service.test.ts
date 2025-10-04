@@ -17,6 +17,7 @@ jest.mock('firebase/firestore');
 jest.mock('geofire-common');
 jest.mock('@/lib/firebase/config', () => ({
   db: {},
+  getDb: jest.fn(() => ({})),
 }));
 
 describe('FirestoreDataService', () => {

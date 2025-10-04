@@ -23,7 +23,12 @@ const SightingMap = dynamic(() => import('@/app/components/SightingMap'), {
 
 export default function Home() {
   const { t } = useI18n();
-  const { location, permissionGranted, requestPermission: requestLocationPermission } = useGeolocation();
+  const {
+    location,
+    permissionGranted,
+    requestPermission: requestLocationPermission,
+    startWatchingLocation
+  } = useGeolocation();
   const {
     token,
     deviceId,
@@ -32,6 +37,7 @@ export default function Home() {
     isOffline,
     requestPermission,
     registerDevice,
+    updateDeviceLocation,
     sendMessage,
     getMessages,
     setupMessageListener,
@@ -161,6 +167,27 @@ export default function Home() {
       };
     }
   }, [isReady, location, getMessages]);
+
+  // Watch for location changes in the background
+  useEffect(() => {
+    if (isReady && permissionGranted) {
+      console.log('Setting up background location monitoring...');
+
+      const cleanup = startWatchingLocation(async (newLocation) => {
+        console.log('Location changed significantly, updating app state...');
+
+        // Update device registration with new location
+        if (token && deviceId) {
+          await updateDeviceLocation(newLocation);
+        }
+
+        // Refresh messages for new location
+        await getMessages(newLocation);
+      });
+
+      return cleanup || undefined;
+    }
+  }, [isReady, permissionGranted, token, deviceId, startWatchingLocation, updateDeviceLocation, getMessages]);
 
   if (!permissionGranted || !location) {
     return <LocationPermission onRequestPermission={requestLocationPermission} />;

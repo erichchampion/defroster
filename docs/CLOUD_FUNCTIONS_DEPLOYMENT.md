@@ -8,15 +8,26 @@ The Defroster app now uses **Firebase Cloud Functions** for reliable, server-sid
 
 ### Functions Deployed:
 
-1. **`cleanupExpiredMessages`** - Runs every 15 minutes
+1. **`sendPeriodicNotifications`** - Runs every 15 minutes
+   - Sends push notifications to devices newly in range of active messages
+   - Only processes messages from last 30 minutes (notification window)
+   - Prevents duplicate notifications via `notifications` collection tracking
+   - Uses standardized logging and centralized constants
+
+2. **`cleanupExpiredMessages`** - Runs every 15 minutes
    - Deletes messages where `expiresAt <= now` (1 hour expiration)
    - Handles batching for large datasets (500 docs per batch)
+   - Uses standardized logging with context
 
-2. **`cleanupOldDevices`** - Runs daily at 2:00 AM
-   - Removes device registrations not updated in 30 days
+3. **`cleanupExpiredNotifications`** - Runs every hour
+   - Removes expired notification records (2-hour expiry)
+   - Prevents notifications collection bloat
+
+4. **`cleanupOldDevices`** - Runs daily at 2:00 AM
+   - Removes device registrations not updated in 7 days
    - Prevents stale device accumulation
 
-3. **`manualCleanup`** - HTTP trigger for manual/emergency cleanup
+5. **`manualCleanup`** - HTTP trigger for manual/emergency cleanup
    - Requires authentication via `CLEANUP_SECRET` env var
    - Useful for testing or emergency purges
 
@@ -42,9 +53,12 @@ The Defroster app now uses **Firebase Cloud Functions** for reliable, server-sid
 ```
 defroster-app/
 ├── firebase.json              # Firebase configuration
+├── firestore.indexes.json    # Firestore indexes (including notifications)
 ├── functions/
 │   ├── src/
-│   │   └── index.ts          # Cloud Functions code
+│   │   ├── index.ts          # Cloud Functions code
+│   │   ├── constants.ts      # Centralized constants (NEW)
+│   │   └── logger.ts         # Logging utility (NEW)
 │   ├── package.json          # Functions dependencies
 │   ├── tsconfig.json         # TypeScript config
 │   └── .gitignore           # Ignore node_modules, lib/
@@ -127,13 +141,15 @@ firebase functions:list
 
 Expected output:
 ```
-┌───────────────────────────┬────────────────────┬─────────┐
-│ Name                      │ Type               │ State   │
-├───────────────────────────┼────────────────────┼─────────┤
-│ cleanupExpiredMessages    │ scheduled (pubsub) │ ACTIVE  │
-│ cleanupOldDevices         │ scheduled (pubsub) │ ACTIVE  │
-│ manualCleanup             │ https              │ ACTIVE  │
-└───────────────────────────┴────────────────────┴─────────┘
+┌──────────────────────────────┬────────────────────┬─────────┐
+│ Name                         │ Type               │ State   │
+├──────────────────────────────┼────────────────────┼─────────┤
+│ sendPeriodicNotifications    │ scheduled (pubsub) │ ACTIVE  │
+│ cleanupExpiredMessages       │ scheduled (pubsub) │ ACTIVE  │
+│ cleanupExpiredNotifications  │ scheduled (pubsub) │ ACTIVE  │
+│ cleanupOldDevices            │ scheduled (pubsub) │ ACTIVE  │
+│ manualCleanup                │ https              │ ACTIVE  │
+└──────────────────────────────┴────────────────────┴─────────┘
 ```
 
 ### View Function Logs
@@ -216,15 +232,23 @@ Create alerts for function failures:
 
 ### Estimated Costs (at scale):
 
+- **sendPeriodicNotifications**: 96 invocations/day (every 15 min)
+  - ~2,880 invocations/month
+  - Compute varies by number of devices (typically 1-3 seconds)
+
 - **cleanupExpiredMessages**: 96 invocations/day (every 15 min)
-  - ~3,000 invocations/month
+  - ~2,880 invocations/month
   - Minimal compute (typically < 1 second)
+
+- **cleanupExpiredNotifications**: 24 invocations/day (every hour)
+  - ~720 invocations/month
+  - Minimal compute
 
 - **cleanupOldDevices**: 1 invocation/day
   - ~30 invocations/month
   - Minimal compute
 
-**Total estimated cost**: < $0.50/month (Free tier includes 2M invocations)
+**Total estimated cost**: < $1.00/month (Free tier includes 2M invocations)
 
 ### Optimize Costs:
 
@@ -311,6 +335,32 @@ firebase deploy --only functions --force
 3. **Service Account**: Firebase automatically handles authentication for scheduled functions
 4. **Rate Limiting**: Scheduled functions have built-in rate limits (96/day for 15-min schedule)
 
+## Architecture Improvements
+
+### Code Quality Enhancements (October 2025)
+
+The Cloud Functions implementation includes several code quality improvements:
+
+1. **Centralized Constants** (`functions/src/constants.ts`):
+   - All magic numbers extracted to named constants
+   - MILES_TO_KM, NOTIFICATION_WINDOW_MS, TWO_HOURS_MS, etc.
+   - GEOHASH_PRECISION_DEVICE, collection names
+   - Single source of truth for configuration
+
+2. **Standardized Logging** (`functions/src/logger.ts`):
+   - Context-based logging format: `[Function:name] message`
+   - Consistent across all functions
+   - Easy debugging and monitoring
+
+3. **Consistent Timestamp Handling**:
+   - All functions use consistent Date.now() → Timestamp.fromMillis() pattern
+   - No mixing of timestamp types
+
+4. **Notification Tracking**:
+   - New `notifications` collection prevents duplicate push notifications
+   - Tracks which devices have been notified for each message
+   - Auto-expires after 2 hours
+
 ## Next Steps
 
 After deploying Cloud Functions:
@@ -319,6 +369,7 @@ After deploying Cloud Functions:
 2. ✅ Update `.env.local.example` with `CLEANUP_SECRET` placeholder
 3. Monitor function logs for first 24 hours to ensure proper operation
 4. Set up alerting for production monitoring
+5. Verify `notifications` collection index is deployed (firestore.indexes.json)
 
 ## Resources
 

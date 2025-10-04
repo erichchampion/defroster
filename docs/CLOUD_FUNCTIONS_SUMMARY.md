@@ -2,7 +2,7 @@
 
 ## What Was Accomplished
 
-Successfully migrated from unreliable client-side Firestore cleanup to production-ready **Firebase Cloud Functions** for automated database maintenance.
+Successfully migrated from unreliable client-side Firestore cleanup to production-ready **Firebase Cloud Functions** for automated database maintenance and periodic push notifications.
 
 ## Changes Made
 
@@ -11,26 +11,41 @@ Successfully migrated from unreliable client-side Firestore cleanup to productio
 ```
 functions/
 ├── src/
-│   └── index.ts          # Three Cloud Functions
+│   ├── index.ts          # Five Cloud Functions
+│   ├── constants.ts      # Centralized constants (NEW)
+│   └── logger.ts         # Logging utility (NEW)
 ├── package.json          # Dependencies
 ├── tsconfig.json         # TypeScript configuration
 └── .gitignore           # Exclude node_modules, lib/
 ```
 
-### 2. Implemented Three Cloud Functions
+### 2. Implemented Five Cloud Functions
 
-#### a) `cleanupExpiredMessages` (Scheduled - Every 15 minutes)
+#### a) `sendPeriodicNotifications` (Scheduled - Every 15 minutes) **[NEW]**
+- **Purpose**: Send push notifications to devices newly in range of active messages
+- **Schedule**: Every 15 minutes (96 times/day)
+- **Smart Filtering**: Only processes messages from last 30 minutes (notification window)
+- **Deduplication**: Tracks sent notifications via `notifications` collection
+- **Features**: Uses centralized constants and standardized logging
+
+#### b) `cleanupExpiredMessages` (Scheduled - Every 15 minutes)
 - **Purpose**: Delete messages where `expiresAt <= now` (1-hour expiration)
 - **Schedule**: Every 15 minutes (96 times/day)
 - **Batching**: Handles 500 documents per batch for efficiency
 - **Reliability**: Runs regardless of client activity
+- **Improvements**: Standardized logging with context
 
-#### b) `cleanupOldDevices` (Scheduled - Daily at 2 AM)
-- **Purpose**: Remove device registrations inactive for 30+ days
+#### c) `cleanupExpiredNotifications` (Scheduled - Every hour) **[NEW]**
+- **Purpose**: Remove expired notification records (2-hour expiry)
+- **Schedule**: Every hour (24 times/day)
+- **Benefit**: Prevents notifications collection bloat
+
+#### d) `cleanupOldDevices` (Scheduled - Daily at 2 AM)
+- **Purpose**: Remove device registrations not updated in 7 days (updated from 30 days)
 - **Schedule**: Daily at 2:00 AM
 - **Benefit**: Prevents database bloat from abandoned devices
 
-#### c) `manualCleanup` (HTTP Trigger)
+#### e) `manualCleanup` (HTTP Trigger)
 - **Purpose**: Manual/emergency cleanup endpoint
 - **Security**: Protected by `CLEANUP_SECRET` environment variable
 - **Use Case**: Testing, troubleshooting, or emergency purges
@@ -49,7 +64,25 @@ functions/
 - Exposed cleanup endpoint to clients (security concern)
 - Didn't work if no one was using the app
 
-### 4. Created Comprehensive Documentation
+### 4. Code Quality Improvements
+
+**Created `functions/src/constants.ts`**:
+- Centralized all magic numbers and configuration
+- MILES_TO_KM, KM_TO_MILES conversion constants
+- Time constants: NOTIFICATION_WINDOW_MS, TWO_HOURS_MS, ONE_WEEK_MS
+- Geohash precision: GEOHASH_PRECISION_DEVICE (7), GEOHASH_PRECISION_AREA (5)
+- Collection names: MESSAGES_COLLECTION, DEVICES_COLLECTION, NOTIFICATIONS_COLLECTION
+
+**Created `functions/src/logger.ts`**:
+- Standardized logging utility with context
+- Format: `logger.info('Function:name', 'message')`
+- Consistent across all functions for easier debugging
+
+**Consistent Timestamp Handling**:
+- All functions use Date.now() → admin.firestore.Timestamp.fromMillis() pattern
+- No mixing of timestamp types
+
+### 5. Created Comprehensive Documentation
 
 **`CLOUD_FUNCTIONS_DEPLOYMENT.md`** includes:
 - Prerequisites and setup instructions
@@ -59,6 +92,7 @@ functions/
 - Troubleshooting guide
 - Cost estimates
 - Security best practices
+- Code quality improvements section
 
 ## Architecture Improvements
 
@@ -83,16 +117,34 @@ Browser Client
 ```
 Cloud Scheduler (Google Infrastructure)
     ↓
-    └─ Trigger cleanupExpiredMessages (every 15 min)
+    ├─ Trigger sendPeriodicNotifications (every 15 min)
+    │      ↓
+    │      ├─ Query active messages (last 30 min)
+    │      ├─ Find nearby devices via geohash
+    │      ├─ Check notification records (prevent duplicates)
+    │      ├─ Send FCM notifications
+    │      └─ Record sent notifications
+    │
+    ├─ Trigger cleanupExpiredMessages (every 15 min)
+    │      ↓
+    │      └─ Firestore query & delete (Admin SDK)
+    │
+    ├─ Trigger cleanupExpiredNotifications (every hour)
+    │      ↓
+    │      └─ Delete expired notification records
+    │
+    └─ Trigger cleanupOldDevices (daily at 2am)
            ↓
-           └─ Firestore query & delete (Admin SDK)
+           └─ Delete devices not updated in 7 days
 ```
 
 **Benefits:**
 - ✅ Reliable (Google infrastructure)
-- ✅ Efficient (single execution)
-- ✅ Secure (no exposed endpoints)
+- ✅ Efficient (single execution per schedule)
+- ✅ Secure (no exposed endpoints, standardized logging)
 - ✅ Always runs (independent of client activity)
+- ✅ Smart notifications (prevents spam, tracks delivery)
+- ✅ Maintainable (centralized constants, consistent code)
 
 ## Deployment Steps
 
@@ -155,14 +207,16 @@ Expected response:
 ## Cost Estimate
 
 ### Monthly Execution:
+- **sendPeriodicNotifications**: 96 invocations/day × 30 days = ~2,880/month
 - **cleanupExpiredMessages**: 96 invocations/day × 30 days = ~2,880/month
+- **cleanupExpiredNotifications**: 24 invocations/day × 30 days = ~720/month
 - **cleanupOldDevices**: 1 invocation/day × 30 days = 30/month
-- **Total**: ~2,910 invocations/month
+- **Total**: ~6,510 invocations/month
 
 ### Pricing (Blaze Plan):
 - Free tier: 2,000,000 invocations/month
-- Compute time: Typically < 1 second per invocation
-- **Estimated cost**: **$0** (well within free tier)
+- Compute time: Typically 1-3 seconds per invocation
+- **Estimated cost**: **< $1.00/month** (well within free tier)
 
 ## Monitoring
 
@@ -188,6 +242,26 @@ Expected response:
 4. **Audit Trail**: All executions logged in Cloud Functions logs
 5. **Rate Limiting**: Built-in by Cloud Scheduler (can't be abused)
 
+## Key Features Added
+
+### 1. Periodic Push Notifications
+- **Automatic Delivery**: Cloud Function sends notifications every 15 minutes to devices newly in range
+- **Smart Window**: Only processes messages from last 30 minutes to prevent spam
+- **Deduplication**: Tracks sent notifications to prevent duplicates
+- **Scalable**: Uses geohash queries for efficient device lookup
+
+### 2. Notification Tracking
+- **New Collection**: `notifications` collection tracks delivery
+- **Schema**: `{messageId}_${deviceId}` document IDs
+- **Auto-Cleanup**: Records expire after 2 hours
+- **Indexed**: Firestore index on `expiresAt` for efficient cleanup
+
+### 3. Code Quality
+- **DRY Principle**: All constants centralized in `constants.ts`
+- **Consistent Logging**: Standardized format across all functions
+- **Type Safety**: Full TypeScript implementation
+- **Maintainable**: Easy to update configuration values
+
 ## What's Left to Do
 
 The Cloud Functions are fully implemented and ready to deploy. However, you may want to:
@@ -196,20 +270,27 @@ The Cloud Functions are fully implemented and ready to deploy. However, you may 
 2. **Recommended**: Add `CLEANUP_SECRET` to `.env.local.example` with placeholder
 3. **Production**: Enable Cloud Scheduler API in Firebase Console
 4. **Production**: Set up monitoring alerts for function failures
+5. **Production**: Deploy Firestore indexes from `firestore.indexes.json`
 
 ## Files Created/Modified
 
 ### Created:
 - `firebase.json` - Firebase project configuration
+- `firestore.indexes.json` - Firestore indexes (including notifications collection)
 - `functions/package.json` - Functions dependencies
 - `functions/tsconfig.json` - TypeScript config
-- `functions/src/index.ts` - Cloud Functions implementation
+- `functions/src/index.ts` - Five Cloud Functions implementation
+- `functions/src/constants.ts` - Centralized constants
+- `functions/src/logger.ts` - Logging utility
 - `functions/.gitignore` - Ignore compiled output
 - `CLOUD_FUNCTIONS_DEPLOYMENT.md` - Deployment guide
 - `CLOUD_FUNCTIONS_SUMMARY.md` - This file
 
 ### Modified:
 - `app/page.tsx` - Removed client-side cleanup scheduler
+- `lib/abstractions/data-service.ts` - Added notification tracking methods
+- `lib/services/firestore-data-service.ts` - Implemented notification methods
+- `lib/constants/app.ts` - Added geohash precision constants
 
 ## Next Steps
 

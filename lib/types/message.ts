@@ -20,3 +20,11 @@ export interface UserDevice {
   geohash: string;
   updatedAt: number;
 }
+
+export interface NotificationRecord {
+  id?: string;
+  messageId: string;
+  deviceId: string;
+  sentAt: number;
+  expiresAt: number;
+}

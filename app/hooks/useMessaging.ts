@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useServices } from '@/lib/contexts/ServicesContext';
 import { Message, GeoLocation } from '@/lib/types/message';
-import { STORAGE_KEYS, DEFAULT_RADIUS_MILES } from '@/lib/constants/app';
+import { STORAGE_KEYS, DEFAULT_RADIUS_MILES, GEOHASH_PRECISION_AREA } from '@/lib/constants/app';
 import { FCM_TOKEN_MAX_AGE_MS } from '@/lib/constants/time';
 import { getOrCreateDeviceId } from '@/lib/utils/device-id';
+import { geohashForLocation } from 'geofire-common';
 
 export function useMessaging() {
   const { messagingService, storageService: localStorageService } = useServices();
@@ -108,7 +109,7 @@ export function useMessaging() {
     }
   };
 
-  const registerDevice = async (location: GeoLocation, fcmToken?: string, devId?: string) => {
+  const registerDevice = useCallback(async (location: GeoLocation, fcmToken?: string, devId?: string) => {
     // Use provided values or fall back to state
     const tokenToUse = fcmToken || token;
     const deviceIdToUse = devId || deviceId;
@@ -119,6 +120,7 @@ export function useMessaging() {
     }
 
     try {
+      console.log(`Registering device at location: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
       const response = await fetch('/api/register-device', {
         method: 'POST',
         headers: {
@@ -132,15 +134,26 @@ export function useMessaging() {
         throw new Error('Failed to register device');
       }
 
+      console.log('Device registered successfully');
       return true;
     } catch (err) {
       setError('Failed to register device');
       console.error('Device registration error:', err);
       return false;
     }
-  };
+  }, [token, deviceId]);
 
-  const sendMessage = async (
+  const updateDeviceLocation = useCallback(async (newLocation: GeoLocation) => {
+    if (!token || !deviceId) {
+      console.warn('Cannot update device location: missing token or deviceId');
+      return false;
+    }
+
+    console.log(`Updating device location to: ${newLocation.latitude.toFixed(4)}, ${newLocation.longitude.toFixed(4)}`);
+    return registerDevice(newLocation, token, deviceId);
+  }, [token, deviceId, registerDevice]);
+
+  const sendMessage = useCallback(async (
     sightingType: 'ICE' | 'Army' | 'Police',
     location: GeoLocation,
     senderLocation: GeoLocation
@@ -171,10 +184,13 @@ export function useMessaging() {
       console.error(err);
       return null;
     }
-  };
+  }, []);
 
-  const getMessages = async (location: GeoLocation) => {
+  const getMessages = useCallback(async (location: GeoLocation) => {
     try {
+      // Calculate geohash for this location
+      const geohash = geohashForLocation([location.latitude, location.longitude], GEOHASH_PRECISION_AREA);
+
       // If offline, load from IndexedDB
       if (isOffline || !navigator.onLine) {
         console.log('Offline - loading messages from IndexedDB');
@@ -183,6 +199,15 @@ export function useMessaging() {
         return localMessages;
       }
 
+      // Get last fetch time for this area (for incremental queries)
+      const lastFetchTime = await localStorageService.getLastFetchTime(geohash);
+      const isIncrementalQuery = lastFetchTime > 0;
+
+      console.log(isIncrementalQuery
+        ? `Incremental query for area ${geohash.substring(0, 5)} since ${new Date(lastFetchTime).toISOString()}`
+        : `Initial query for area ${geohash.substring(0, 5)}`
+      );
+
       // Try to fetch from server
       const response = await fetch('/api/get-messages', {
         method: 'POST',
@@ -190,7 +215,10 @@ export function useMessaging() {
           'Content-Type': 'application/json',
           'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
         },
-        body: JSON.stringify({ location }),
+        body: JSON.stringify({
+          location,
+          sinceTimestamp: isIncrementalQuery ? lastFetchTime : undefined
+        }),
       });
 
       if (!response.ok) {
@@ -200,13 +228,27 @@ export function useMessaging() {
       const data = await response.json();
       const serverMessages = data.messages || [];
 
-      // Save to IndexedDB for offline access
+      console.log(`Received ${serverMessages.length} messages from server`);
+
+      // Save new messages to IndexedDB
       if (serverMessages.length > 0) {
         await localStorageService.saveMessages(serverMessages);
       }
 
-      setMessages(serverMessages);
-      return serverMessages;
+      // Update last fetch time for this area
+      await localStorageService.setLastFetchTime(geohash, Date.now());
+
+      // If incremental query, merge with existing local messages
+      if (isIncrementalQuery) {
+        const localMessages = await localStorageService.getMessagesInRadius(location, DEFAULT_RADIUS_MILES);
+        console.log(`Merged ${serverMessages.length} new + ${localMessages.length} cached = ${localMessages.length} total`);
+        setMessages(localMessages);
+        return localMessages;
+      } else {
+        // Initial query, just use server messages
+        setMessages(serverMessages);
+        return serverMessages;
+      }
     } catch (err) {
       console.error('Error getting messages from server:', err);
 
@@ -222,7 +264,7 @@ export function useMessaging() {
         return [];
       }
     }
-  };
+  }, [localStorageService, isOffline]);
 
   const setupMessageListener = useCallback(() => {
     messagingService.onMessage(async (message) => {
@@ -335,6 +377,7 @@ export function useMessaging() {
     isOffline,
     requestPermission,
     registerDevice,
+    updateDeviceLocation,
     sendMessage,
     getMessages,
     setupMessageListener,

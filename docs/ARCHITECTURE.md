@@ -100,11 +100,12 @@ Defroster is a Progressive Web Application (PWA) built with a **privacy-first**,
 - **Push Notifications**: Firebase Cloud Messaging
 - **Geospatial**: geofire-common
 - **Admin Operations**: Firebase Admin SDK
+- **Scheduled Jobs**: Firebase Cloud Functions (periodic notifications & cleanup)
 
 #### Infrastructure
 - **Hosting**: Vercel / Firebase Hosting / Self-hosted
 - **CDN**: Vercel Edge Network / Cloudflare
-- **Functions**: Serverless (Vercel Functions / Firebase Cloud Functions)
+- **Functions**: Firebase Cloud Functions (scheduled tasks) + Next.js API Routes
 - **Storage**: IndexedDB (client-side)
 
 ---
@@ -1431,6 +1432,22 @@ const SightingMap = dynamic(() => import('@/app/components/SightingMap'), {
 
 ### 2. Memoization
 
+**useCallback for Hook Functions** (Code Review Fix #6):
+```typescript
+// app/hooks/useMessaging.ts
+const getMessages = useCallback(async (location: GeoLocation) => {
+  // ... implementation
+}, [localStorageService, isOffline]);
+
+const sendMessage = useCallback(async (...) => {
+  // ... implementation
+}, []);
+
+const registerDevice = useCallback(async (...) => {
+  // ... implementation
+}, [token, deviceId]);
+```
+
 **useMemo for Expensive Calculations**:
 ```typescript
 // app/components/SightingMap.tsx
@@ -1447,7 +1464,39 @@ export default React.memo(MessageList, (prev, next) => {
 });
 ```
 
-### 3. Debouncing
+**Optimized Dependency Arrays** (Code Review Fix #7):
+```typescript
+// app/hooks/useGeolocation.ts
+const locationRef = useRef<GeoLocation | null>(null);
+
+const startWatchingLocation = useCallback((
+  onLocationChange?: (newLocation: GeoLocation) => void
+) => {
+  // Use locationRef.current to avoid recreating callback
+}, [permissionGranted]); // Removed location from deps
+```
+
+### 3. Centralized Constants (Code Review Fixes #2-4)
+
+**DRY Principle Applied**:
+```typescript
+// functions/src/constants.ts & lib/constants/app.ts
+export const MILES_TO_KM = 1.60934;
+export const KM_TO_MILES = 0.621371;
+export const NOTIFICATION_WINDOW_MS = 30 * 60 * 1000;
+export const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+export const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+export const GEOHASH_PRECISION_DEVICE = 7;  // ~76m precision
+export const GEOHASH_PRECISION_AREA = 5;    // ~5km precision
+```
+
+**Benefits**:
+- Single source of truth for all magic numbers
+- Easy to update precision/timeouts across entire codebase
+- Improved code readability and maintainability
+- Reduced technical debt
+
+### 4. Debouncing
 
 **Location Updates**:
 ```typescript
@@ -1459,7 +1508,7 @@ const debouncedUpdateLocation = useMemo(
 );
 ```
 
-### 4. IndexedDB Batch Operations
+### 5. IndexedDB Batch Operations
 
 **Batch Writes**:
 ```typescript
@@ -1476,7 +1525,7 @@ async saveMessages(messages: Message[]): Promise<void> {
 }
 ```
 
-### 5. Geohash Query Optimization
+### 6. Geohash Query Optimization
 
 **Minimize Query Rectangles**:
 ```typescript
@@ -1493,22 +1542,36 @@ const promises = bounds.map(([start, end]) => {
 ```typescript
 // After geohash query, filter by exact distance
 const filtered = messages.filter(message => {
-  const distance = distanceBetween(
-    [center.latitude, center.longitude],
-    [message.location.latitude, message.location.longitude]
-  );
-  return distance <= radiusMeters;
+  const distance = calculateDistance(location1, location2);
+  return distance <= radiusMiles;
 });
 ```
 
-### 6. Image Optimization
+**Standardized Logging** (Code Review Fixes #11-13):
+```typescript
+// lib/utils/logger.ts & functions/src/logger.ts
+export const logger = {
+  info: (context: string, ...args: unknown[]) => {
+    console.log(`[${context}]`, ...args);
+  },
+  error: (context: string, ...args: unknown[]) => {
+    console.error(`[${context}]`, ...args);
+  }
+};
+
+// Usage throughout app
+logger.error('API:send-message', 'Error sending:', error);
+logger.info('Function:sendPeriodicNotifications', 'Starting...');
+```
+
+### 7. Image Optimization
 
 **PWA Icons**:
 - Pre-generated all sizes (16x16 to 1024x1024)
 - WebP format where supported
 - Lazy loading for non-critical images
 
-### 7. Bundle Size Optimization
+### 8. Bundle Size Optimization
 
 **Current Size**:
 ```
@@ -1523,6 +1586,7 @@ First Load JS shared        102 kB
 - Tree shaking (automatically via Next.js)
 - No moment.js (native Intl API instead)
 - Minimal dependencies (no lodash, axios, etc.)
+- Removed unused imports (Code Review Fix #14)
 
 ---
 
@@ -1631,5 +1695,24 @@ For questions or contributions, see the main [README.md](../README.md).
 
 ---
 
-**Last Updated**: 2025-01-03
-**Version**: 0.1.0
+## Code Quality Improvements
+
+The codebase underwent a comprehensive code review in October 2025, resulting in the following improvements:
+
+### Issues Resolved (15/15 - 100% Completion)
+
+1. **Critical Issues (1)**: Fixed TypeScript interface violations in FirestoreDataService
+2. **DRY Violations (4)**: Extracted all hardcoded constants to centralized files
+3. **Performance Issues (2)**: Added proper memoization with useCallback and optimized dependency arrays
+4. **Consistency Issues (3)**: Standardized logging and timestamp handling across entire application
+5. **Minor Issues (2)**: Cleaned up unused imports and magic numbers
+
+For detailed information, see:
+- `FINAL_CODE_REVIEW_SUMMARY.md` - Complete summary of all fixes
+- `CODE_REVIEW_FINDINGS.md` - Original code review findings
+- `SECURITY_REVIEW.md` - Security analysis of all changes
+
+---
+
+**Last Updated**: 2025-10-04
+**Version**: 0.2.0

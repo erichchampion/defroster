@@ -1,9 +1,10 @@
 import { geohashQueryBounds, distanceBetween, geohashForLocation } from 'geofire-common';
 import { adminDb } from '@/lib/firebase/admin';
 import { IDataService } from '@/lib/abstractions/data-service';
-import { Message, UserDevice, GeoLocation } from '@/lib/types/message';
-import { MESSAGES_COLLECTION, DEVICES_COLLECTION } from '@/lib/constants/app';
+import { Message, UserDevice, GeoLocation, NotificationRecord } from '@/lib/types/message';
+import { MESSAGES_COLLECTION, DEVICES_COLLECTION, NOTIFICATIONS_COLLECTION, GEOHASH_PRECISION_DEVICE } from '@/lib/constants/app';
 import { MILES_TO_KM, KM_TO_MILES } from '@/lib/constants/conversions';
+import { NOTIFICATION_RECORD_RETENTION_MS } from '@/lib/constants/time';
 
 /**
  * Firestore Data Service using Firebase Admin SDK
@@ -136,8 +137,8 @@ export class FirestoreAdminDataService implements IDataService {
     for (const bound of bounds) {
       const q = adminDb
         .collection(DEVICES_COLLECTION)
-        .where('geohash', '>=', bound[0].substring(0, 7))
-        .where('geohash', '<=', bound[1].substring(0, 7) + '~');
+        .where('geohash', '>=', bound[0].substring(0, GEOHASH_PRECISION_DEVICE))
+        .where('geohash', '<=', bound[1].substring(0, GEOHASH_PRECISION_DEVICE) + '~');
       promises.push(q.get());
     }
 
@@ -165,7 +166,7 @@ export class FirestoreAdminDataService implements IDataService {
       throw new Error('Firebase Admin SDK not initialized');
     }
 
-    const geohash = geohashForLocation([location.latitude, location.longitude], 7);
+    const geohash = geohashForLocation([location.latitude, location.longitude], GEOHASH_PRECISION_DEVICE);
     await adminDb.collection(DEVICES_COLLECTION).doc(deviceId).set(
       {
         geohash,
@@ -181,5 +182,108 @@ export class FirestoreAdminDataService implements IDataService {
     }
 
     await adminDb.collection(DEVICES_COLLECTION).doc(deviceId).delete();
+  }
+
+  async recordNotification(messageId: string, deviceId: string): Promise<void> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin SDK not initialized');
+    }
+
+    const now = Date.now();
+    const notificationRecord: NotificationRecord = {
+      messageId,
+      deviceId,
+      sentAt: now,
+      expiresAt: now + NOTIFICATION_RECORD_RETENTION_MS,
+    };
+
+    // Use composite ID for easy lookup and deduplication
+    const docId = `${messageId}_${deviceId}`;
+    await adminDb.collection(NOTIFICATIONS_COLLECTION).doc(docId).set({
+      ...notificationRecord,
+      sentAt: new Date(notificationRecord.sentAt),
+      expiresAt: new Date(notificationRecord.expiresAt),
+    });
+  }
+
+  async wasDeviceNotified(messageId: string, deviceId: string): Promise<boolean> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin SDK not initialized');
+    }
+
+    const docId = `${messageId}_${deviceId}`;
+    const doc = await adminDb.collection(NOTIFICATIONS_COLLECTION).doc(docId).get();
+    return doc.exists;
+  }
+
+  async getUnnotifiedDevices(messageId: string, devices: UserDevice[]): Promise<UserDevice[]> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin SDK not initialized');
+    }
+
+    if (devices.length === 0) {
+      return [];
+    }
+
+    // Batch check which devices have already been notified
+    const notificationChecks = devices.map(device =>
+      this.wasDeviceNotified(messageId, device.deviceId)
+    );
+
+    const notificationStatuses = await Promise.all(notificationChecks);
+
+    // Filter out devices that have already been notified
+    return devices.filter((_, index) => !notificationStatuses[index]);
+  }
+
+  async getActiveMessages(): Promise<Message[]> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin SDK not initialized');
+    }
+
+    const now = new Date();
+    const snapshot = await adminDb
+      .collection(MESSAGES_COLLECTION)
+      .where('expiresAt', '>', now)
+      .get();
+
+    const messages: Message[] = [];
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      messages.push({
+        id: doc.id,
+        sightingType: data.sightingType,
+        location: data.location,
+        timestamp: data.timestamp.toMillis(),
+        geohash: data.geohash,
+        expiresAt: data.expiresAt.toMillis(),
+      });
+    }
+
+    return messages;
+  }
+
+  async deleteExpiredNotifications(): Promise<number> {
+    if (!adminDb) {
+      throw new Error('Firebase Admin SDK not initialized');
+    }
+
+    const now = new Date();
+    const snapshot = await adminDb
+      .collection(NOTIFICATIONS_COLLECTION)
+      .where('expiresAt', '<=', now)
+      .get();
+
+    if (snapshot.empty) {
+      return 0;
+    }
+
+    const batch = adminDb.batch();
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    return snapshot.size;
   }
 }

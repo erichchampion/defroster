@@ -19,7 +19,7 @@
     "privacyNotice": {
       "heading": "Privacy Notice",
       "locationUsage": "Your location is used only to find nearby alerts",
-      "serverDeletion": "Reports are deleted from the server after 1 hour",
+      "serverDeletion": "Reports are deleted from the server after 1 day",
       "localDeletion": "Reports are deleted from your phone after 1 week",
       "locationRandomization": "Your location is randomized to the nearest city block (~250 feet)",
       "noPersonalData": "No personal data is ever stored",
@@ -27,13 +27,13 @@
     },
     "story": {
       "paragraph1": "In the early hours of October 2, a South Shore Drive apartment building in Chicago was torn apart by a federal raid. Agents from Border Patrol, the FBI, and the ATF stormed the five-story complex with helicopters, armored vehicles, and flash-bang grenades. Families were forced from their homes, zip-tied in the street—some unclothed—and left outside for hours. By sunrise, all but 37 were released, but residents returned to apartments trashed and a community deeply shaken.",
-      "paragraph2": "Incidents like this highlight the urgent need for tools that protect and inform. {appName} is an anonymous, {openSourceLink} app that lets users report Immigration and Customs Enforcement (ICE) activity with just a tap on their screen. The platform never stores personal data, automatically deletes reports from the server after an hour, and alerts communities within a five-mile radius. With Defroster, people can stay safe, informed, and connected—while remaining fully anonymous.",
+      "paragraph2": "Incidents like this highlight the urgent need for tools that protect and inform. {appName} is an anonymous, {openSourceLink} app that lets users report Immigration and Customs Enforcement (ICE) activity with just a tap on their screen. The platform never stores personal data, automatically deletes reports from the server after one day, and alerts communities within a five-mile radius. With Defroster, people can stay safe, informed, and connected—while remaining fully anonymous.",
       "openSourceText": "open-source"
     }
   },
   "main": {
     "heading": "Defroster: Report Sightings",
-    "subtitle": "Report and view sightings within 5 miles • Auto-delete from the server after 1 hour",
+    "subtitle": "Report and view sightings within 5 miles • Auto-delete from the server after 1 day",
     "offlineMode": "⚠ Offline mode - viewing cached sightings",
     "notificationsEnabled": "✓ Notifications enabled",
     "notificationsUnavailable": "⚠ Push notifications unavailable (app still works for viewing/sending)",

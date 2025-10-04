@@ -20,7 +20,7 @@ Defroster was created in response to the October 2, 2024 federal raid on a South
 - 🔒 **No personal data stored** - ever
 - 📍 **Location randomization** to nearest city block (~250 feet / ~76 meters)
 - 🔐 **Anonymous device IDs** using UUID v4
-- 🗑️ **Auto-deletion**: Reports removed from server after 1 hour, from device after 1 week
+- 🗑️ **Auto-deletion**: Reports removed from server after 1 day, from device after 1 week
 - 🚫 **No user accounts or authentication required**
 
 ### Real-Time Alerts

@@ -1,27 +1,34 @@
 /**
  * Logging utility for Cloud Functions
  * Provides consistent logging format
+ * Only logs errors in production
  */
+
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 export const logger = {
   /**
-   * Log informational messages
+   * Log informational messages - only in development
    */
   info: (context: string, ...args: unknown[]) => {
-    console.log(`[${context}]`, ...args);
+    if (isDevelopment) {
+      console.log(`[${context}]`, ...args);
+    }
   },
 
   /**
-   * Log error messages
+   * Log error messages - always shown
    */
   error: (context: string, ...args: unknown[]) => {
     console.error(`[${context}]`, ...args);
   },
 
   /**
-   * Log warning messages
+   * Log warning messages - only in development
    */
   warn: (context: string, ...args: unknown[]) => {
-    console.warn(`[${context}]`, ...args);
+    if (isDevelopment) {
+      console.warn(`[${context}]`, ...args);
+    }
   },
 };

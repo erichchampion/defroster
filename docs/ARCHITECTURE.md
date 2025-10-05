@@ -540,26 +540,48 @@ const dataService = new MongoDBDataService({
 // No changes needed in components!
 ```
 
-### 3. IStorageService
+### 3. ILocalStorageService
 
-**Location**: `lib/abstractions/storage-service.ts`
+**Location**: `lib/abstractions/local-storage-service.ts`
 
 **Purpose**: Local storage abstraction.
 
 **Interface**:
 ```typescript
-export interface IStorageService {
+export interface ILocalStorageService {
+  // Initialization
   initialize(): Promise<void>;
+
+  // Message operations
   saveMessage(message: Message): Promise<void>;
   saveMessages(messages: Message[]): Promise<void>;
+  getMessagesInRadius(location: GeoLocation, radiusMiles: number): Promise<Message[]>;
   getAllMessages(): Promise<Message[]>;
+  deleteMessage(id: string): Promise<void>;
   deleteExpiredMessages(): Promise<number>;
-  deleteOldMessages(cutoffDate: Date): Promise<number>;
+  deleteOldMessages(maxAgeMs?: number): Promise<number>;
+  deleteMessagesOlderThanOneWeek(): Promise<number>;
   clearAll(): Promise<void>;
+
+  // Metadata operations
+  getLastFetchTime(geohash: string): Promise<number>;
+  setLastFetchTime(geohash: string, timestamp: number): Promise<void>;
+
+  // App state operations
+  saveAppState(state: Partial<AppState>): Promise<void>;
+  getAppState(): Promise<AppState | null>;
+  clearAppState(): Promise<void>;
 }
 ```
 
 **Current Implementation**: `IndexedDBStorageService`
+
+**Features**:
+- Three object stores: messages, metadata, app_state
+- Geohash-based spatial queries
+- Incremental fetch tracking
+- App state persistence with TTL
+- Automatic initialization via `ensureInitialized()` helper
 
 **Alternative Providers**:
 - LocalStorage (simpler, size-limited)
@@ -634,54 +656,182 @@ await messagingService.requestPermission();
 
 #### 1. useGeolocation (`app/hooks/useGeolocation.ts`)
 
-**Purpose**: Manage geolocation state.
+**Purpose**: Manage geolocation state with iOS PWA lifecycle support.
 
 **Returns**:
 ```typescript
 interface UseGeolocationReturn {
   location: GeoLocation | null;
   permissionGranted: boolean;
+  loading: boolean;
   error: string | null;
   requestPermission: () => Promise<GeoLocation | null>;
+  updateLocation: () => Promise<GeoLocation | null>;
+  startWatchingLocation: (onLocationChange?: (loc: GeoLocation) => void) => (() => void) | null;
+  stopWatchingLocation: () => void;
 }
 ```
 
-**Implementation Details**:
-- Requests permission on demand
-- Caches location in state
-- Handles errors gracefully
-- Re-requests if permission revoked
+**Key Features**:
+- **Permissions API Integration**: Auto-detects previously granted permissions on mount
+- **State Persistence**: Saves/restores location from IndexedDB
+- **Permission Monitoring**: Listens for permission changes
+- **Location Watching**: Background location updates with significant change detection
+- **Error Handling**: Centralized error handler for consistent UX
+- **iOS Optimization**: Automatic restoration after app backgrounding
+
+**Implementation**:
+```typescript
+// Check existing permission on mount
+useEffect(() => {
+  const checkExistingPermission = async () => {
+    if (!('permissions' in navigator)) return;
+
+    const result = await navigator.permissions.query({ name: 'geolocation' });
+
+    if (result.state === 'granted') {
+      // Auto-restore location without user interaction
+      await requestPermission();
+    }
+
+    // Listen for permission changes
+    result.addEventListener('change', handlePermissionChange);
+  };
+
+  checkExistingPermission();
+}, []);
+
+// Restore location from IndexedDB
+useEffect(() => {
+  const restoreLocationState = async () => {
+    const savedState = await storageService.getAppState();
+    if (savedState?.lastKnownLocation && savedState.locationPermissionGranted) {
+      setLocation({
+        latitude: savedState.lastKnownLocation.latitude,
+        longitude: savedState.lastKnownLocation.longitude,
+      });
+    }
+  };
+
+  restoreLocationState();
+}, [storageService]);
+
+// Save location changes to IndexedDB
+useEffect(() => {
+  if (location && permissionGranted) {
+    storageService.saveAppState({
+      lastKnownLocation: {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timestamp: Date.now(),
+      },
+      locationPermissionGranted: true,
+    }).catch(handleStateSaveError('save location state'));
+  }
+}, [location, permissionGranted, storageService]);
+```
 
 #### 2. useMessaging (`app/hooks/useMessaging.ts`)
 
-**Purpose**: Manage messaging state and operations.
+**Purpose**: Manage messaging state and operations with FCM token persistence.
 
 **Returns**:
 ```typescript
 interface UseMessagingReturn {
   // State
   token: string | null;
+  deviceId: string | null;
   permission: NotificationPermission;
   messages: Message[];
+  error: string | null;
   isOffline: boolean;
 
   // Operations
   requestPermission: () => Promise<string | null>;
-  registerDevice: (location: GeoLocation) => Promise<void>;
-  sendMessage: (sightingType: SightingType, location: GeoLocation, deviceLocation: GeoLocation) => Promise<void>;
-  getMessages: (location: GeoLocation) => Promise<void>;
+  registerDevice: (location: GeoLocation, fcmToken?: string, devId?: string) => Promise<boolean>;
+  updateDeviceLocation: (newLocation: GeoLocation) => Promise<boolean>;
+  sendMessage: (sightingType: SightingType, location: GeoLocation, senderLocation: GeoLocation) => Promise<any>;
+  getMessages: (location: GeoLocation) => Promise<Message[]>;
   setupMessageListener: () => () => void;
+  clearLocalStorage: () => Promise<void>;
   cleanupExpiredMessages: () => Promise<void>;
-  cleanupOldMessages: () => Promise<void>;
+  cleanupOldMessages: () => Promise<number>;
+  refreshToken: (location?: GeoLocation) => Promise<string | null>;
 }
 ```
 
 **Key Features**:
-- Initializes messaging service
-- Manages FCM token
-- Handles message sending/receiving
-- Orchestrates IndexedDB + Firestore
-- Background cleanup
+- **Token Restoration**: Auto-restores FCM token if notification permission granted
+- **State Persistence**: Saves notification permission and device registration state
+- **Incremental Queries**: Tracks last fetch time per geohash area for efficient updates
+- **Offline Support**: Detects network status, loads from IndexedDB when offline
+- **Token Management**: Uses `saveFCMToken()` utility for consistent persistence
+- **Error Handling**: Consistent error handling via `handleStateSaveError()`
+
+**Implementation**:
+```typescript
+// Restore FCM token on mount if permission granted
+useEffect(() => {
+  const checkExistingNotificationPermission = async () => {
+    if (Notification.permission === 'granted' && !token) {
+      await messagingService.initialize();
+      const fcmToken = await messagingService.getToken();
+
+      if (fcmToken) {
+        saveFCMToken(fcmToken);  // Utility function
+        setToken(fcmToken);
+
+        await localStorageService.saveAppState({
+          notificationPermissionGranted: true,
+        }).catch(handleStateSaveError('save notification permission state'));
+      }
+    }
+  };
+
+  checkExistingNotificationPermission();
+}, []);
+
+// Save device registration state
+const registerDevice = useCallback(async (location, fcmToken?, devId?) => {
+  // ... register device
+
+  await localStorageService.saveAppState({
+    deviceRegistered: true,
+    notificationPermissionGranted: true,
+    lastDeviceRegistrationTime: Date.now(),
+  }).catch(handleStateSaveError('save device registration state'));
+}, [token, deviceId, localStorageService]);
+
+// Incremental message fetching
+const getMessages = useCallback(async (location) => {
+  const geohash = geohashForLocation([location.latitude, location.longitude]);
+  const lastFetchTime = await localStorageService.getLastFetchTime(geohash);
+
+  if (isOffline) {
+    // Load from IndexedDB
+    const localMessages = await localStorageService.getMessagesInRadius(location, DEFAULT_RADIUS_MILES);
+    setMessages(localMessages);
+    return localMessages;
+  }
+
+  // Fetch from server with sinceTimestamp for incremental updates
+  const response = await fetch('/api/get-messages', {
+    body: JSON.stringify({
+      location,
+      sinceTimestamp: lastFetchTime > 0 ? lastFetchTime : undefined
+    })
+  });
+
+  const { messages: serverMessages } = await response.json();
+
+  // Save to IndexedDB
+  await localStorageService.saveMessages(serverMessages);
+  await localStorageService.setLastFetchTime(geohash, Date.now());
+
+  // Merge with local messages if incremental
+  // ...
+}, [localStorageService, isOffline]);
+```
 
 ---
 
@@ -962,9 +1112,9 @@ const promises = bounds.map(([start, end]) => {
 
 **Database Name**: `DefrosterDB`
 
-**Version**: 1
+**Version**: 3
 
-**Object Store**: `messages`
+#### Object Store 1: `messages`
 
 **Key Path**: `id`
 
@@ -973,28 +1123,111 @@ const promises = bounds.map(([start, end]) => {
 {
   timestamp: { unique: false },     // For time-based queries
   expiresAt: { unique: false },     // For cleanup
-  sightingType: { unique: false }   // For filtering
+  sightingType: { unique: false },  // For filtering
+  latitude: { unique: false },      // For geospatial queries
+  longitude: { unique: false }      // For geospatial queries
+}
+```
+
+#### Object Store 2: `metadata`
+
+**Key Path**: `key`
+
+**Purpose**: Store last fetch timestamps for geohash areas
+
+**Document Structure**:
+```typescript
+{
+  key: "fetch_dp3wj",  // "fetch_" + 5-char geohash
+  timestamp: number,
+  geohash: string
+}
+```
+
+#### Object Store 3: `app_state`
+
+**Key Path**: `key`
+
+**Purpose**: Persist application state for iOS PWA lifecycle
+
+**Document Structure**:
+```typescript
+interface AppState {
+  key: 'app_state';  // Always this value
+  lastKnownLocation: {
+    latitude: number;
+    longitude: number;
+    timestamp: number;
+  } | null;
+  locationPermissionGranted: boolean;
+  notificationPermissionGranted: boolean;
+  deviceRegistered: boolean;
+  lastDeviceRegistrationTime: number;
+  appInitialized: boolean;
+  lastActiveTimestamp: number;
+  updatedAt: number;
 }
 ```
 
 **Schema Definition**:
 ```typescript
 // lib/services/indexeddb-storage-service.ts
-const request = indexedDB.open('DefrosterDB', 1);
+const request = indexedDB.open('DefrosterDB', 3);
 
 request.onupgradeneeded = (event) => {
   const db = event.target.result;
 
+  // Messages store
   if (!db.objectStoreNames.contains('messages')) {
-    const objectStore = db.createObjectStore('messages', {
-      keyPath: 'id'
-    });
+    const messageStore = db.createObjectStore('messages', { keyPath: 'id' });
+    messageStore.createIndex('timestamp', 'timestamp', { unique: false });
+    messageStore.createIndex('expiresAt', 'expiresAt', { unique: false });
+    messageStore.createIndex('sightingType', 'sightingType', { unique: false });
+    messageStore.createIndex('latitude', 'location.latitude', { unique: false });
+    messageStore.createIndex('longitude', 'location.longitude', { unique: false });
+  }
 
-    objectStore.createIndex('timestamp', 'timestamp', { unique: false });
-    objectStore.createIndex('expiresAt', 'expiresAt', { unique: false });
-    objectStore.createIndex('sightingType', 'sightingType', { unique: false });
+  // Metadata store
+  if (!db.objectStoreNames.contains('metadata')) {
+    db.createObjectStore('metadata', { keyPath: 'key' });
+  }
+
+  // App state store
+  if (!db.objectStoreNames.contains('app_state')) {
+    db.createObjectStore('app_state', { keyPath: 'key' });
   }
 };
+```
+
+**State Persistence Methods**:
+```typescript
+class IndexedDBStorageService implements ILocalStorageService {
+  // Ensure DB is initialized before operations
+  private async ensureInitialized(): Promise<IDBDatabase> {
+    if (!this.db) {
+      await this.initialize();
+    }
+    if (!this.db) {
+      throw new Error('IndexedDB not initialized');
+    }
+    return this.db;
+  }
+
+  async saveAppState(state: Partial<AppState>): Promise<void> {
+    await this.ensureInitialized();
+    // Save state with updatedAt timestamp
+  }
+
+  async getAppState(): Promise<AppState | null> {
+    await this.ensureInitialized();
+    // Return state if age < APP_STATE_MAX_AGE_MS, else null
+  }
+
+  async clearAppState(): Promise<void> {
+    await this.ensureInitialized();
+    // Remove app_state entry
+  }
+}
 ```
 
 ---
@@ -1464,37 +1697,63 @@ export default React.memo(MessageList, (prev, next) => {
 });
 ```
 
-**Optimized Dependency Arrays** (Code Review Fix #7):
+**Optimized Dependency Arrays**:
 ```typescript
 // app/hooks/useGeolocation.ts
 const locationRef = useRef<GeoLocation | null>(null);
 
+// Use refs to avoid recreating callbacks
 const startWatchingLocation = useCallback((
   onLocationChange?: (newLocation: GeoLocation) => void
 ) => {
-  // Use locationRef.current to avoid recreating callback
-}, [permissionGranted]); // Removed location from deps
+  // Access locationRef.current instead of location state
+  if (locationRef.current) {
+    const distance = calculateDistance(locationRef.current, newLocation);
+    // ...
+  }
+}, [permissionGranted]);
 ```
 
-### 3. Centralized Constants (Code Review Fixes #2-4)
+### 3. Centralized Constants
 
-**DRY Principle Applied**:
+**Time Constants** (`lib/constants/time.ts`):
 ```typescript
-// functions/src/constants.ts & lib/constants/app.ts
+export const ONE_SECOND_MS = 1000;
+export const ONE_MINUTE_MS = 60 * ONE_SECOND_MS;
+export const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
+export const ONE_WEEK_MS = 7 * ONE_DAY_MS;
+
+export const MESSAGE_EXPIRATION_MS = 24 * ONE_HOUR_MS;
+export const NOTIFICATION_WINDOW_MS = 30 * ONE_MINUTE_MS;
+export const FCM_TOKEN_MAX_AGE_MS = 30 * ONE_DAY_MS;
+export const APP_STATE_MAX_AGE_MS = ONE_WEEK_MS;
+export const GEOLOCATION_TIMEOUT_MS = 10 * ONE_SECOND_MS;
+```
+
+**Geolocation Constants** (`lib/constants/geolocation.ts`):
+```typescript
+export const GEOLOCATION_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  timeout: GEOLOCATION_TIMEOUT_MS,
+  maximumAge: 0,
+};
+```
+
+**App Constants** (`lib/constants/app.ts`):
+```typescript
 export const MILES_TO_KM = 1.60934;
 export const KM_TO_MILES = 0.621371;
-export const NOTIFICATION_WINDOW_MS = 30 * 60 * 1000;
-export const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-export const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 export const GEOHASH_PRECISION_DEVICE = 7;  // ~76m precision
 export const GEOHASH_PRECISION_AREA = 5;    // ~5km precision
+export const DEFAULT_RADIUS_MILES = 5;
 ```
 
 **Benefits**:
-- Single source of truth for all magic numbers
-- Easy to update precision/timeouts across entire codebase
+- Single source of truth for all configuration values
+- Easy to update timeouts/precision across entire codebase
 - Improved code readability and maintainability
-- Reduced technical debt
+- Type-safe configuration
 
 ### 4. Debouncing
 
@@ -1547,21 +1806,53 @@ const filtered = messages.filter(message => {
 });
 ```
 
-**Standardized Logging** (Code Review Fixes #11-13):
+### 7. Centralized Utilities
+
+**Error Handling** (`lib/utils/error-handling.ts`):
 ```typescript
-// lib/utils/logger.ts & functions/src/logger.ts
+export const handleStateSaveError = (context: string) => (err: unknown) => {
+  console.error(`Failed to ${context}:`, err);
+  // Optional: Add analytics tracking here in the future
+};
+
+// Usage
+storageService.saveAppState({...})
+  .catch(handleStateSaveError('save location state'));
+```
+
+**FCM Token Management** (`lib/utils/fcm-token.ts`):
+```typescript
+export const saveFCMToken = (token: string): void => {
+  localStorage.setItem(STORAGE_KEYS.FCM_TOKEN, token);
+  localStorage.setItem(STORAGE_KEYS.FCM_TOKEN_TIMESTAMP, Date.now().toString());
+};
+
+export const removeFCMToken = (): void => {
+  localStorage.removeItem(STORAGE_KEYS.FCM_TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.FCM_TOKEN_TIMESTAMP);
+};
+```
+
+**Logging** (`lib/utils/logger.ts`):
+```typescript
 export const logger = {
+  debug: (context: string, ...args: unknown[]) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEBUG:${context}]`, ...args);
+    }
+  },
   info: (context: string, ...args: unknown[]) => {
-    console.log(`[${context}]`, ...args);
+    if (process.env.NODE_ENV === 'development') {
+      console.info(`[INFO:${context}]`, ...args);
+    }
   },
   error: (context: string, ...args: unknown[]) => {
-    console.error(`[${context}]`, ...args);
+    console.error(`[ERROR:${context}]`, ...args);
   }
 };
 
-// Usage throughout app
+// Usage
 logger.error('API:send-message', 'Error sending:', error);
-logger.info('Function:sendPeriodicNotifications', 'Starting...');
 ```
 
 ### 7. Image Optimization
@@ -1695,24 +1986,14 @@ For questions or contributions, see the main [README.md](../README.md).
 
 ---
 
-## Code Quality Improvements
+---
 
-The codebase underwent a comprehensive code review in October 2025, resulting in the following improvements:
-
-### Issues Resolved (15/15 - 100% Completion)
-
-1. **Critical Issues (1)**: Fixed TypeScript interface violations in FirestoreDataService
-2. **DRY Violations (4)**: Extracted all hardcoded constants to centralized files
-3. **Performance Issues (2)**: Added proper memoization with useCallback and optimized dependency arrays
-4. **Consistency Issues (3)**: Standardized logging and timestamp handling across entire application
-5. **Minor Issues (2)**: Cleaned up unused imports and magic numbers
-
-For detailed information, see:
-- `FINAL_CODE_REVIEW_SUMMARY.md` - Complete summary of all fixes
-- `CODE_REVIEW_FINDINGS.md` - Original code review findings
-- `SECURITY_REVIEW.md` - Security analysis of all changes
+**Last Updated**: 2025-10-05
+**Version**: 0.3.0
 
 ---
 
-**Last Updated**: 2025-10-04
-**Version**: 0.2.0
+## Additional Documentation
+
+For detailed implementation information, see:
+- `STATE_PERSISTENCE.md` - State persistence system guide

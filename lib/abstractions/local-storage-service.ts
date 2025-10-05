@@ -1,4 +1,5 @@
 import { Message, GeoLocation } from '@/lib/types/message';
+import { AppState } from '@/lib/types/app-state';
 
 export interface ILocalStorageService {
   initialize(): Promise<void>;
@@ -11,4 +12,9 @@ export interface ILocalStorageService {
   deleteOldMessages(maxAgeMs: number): Promise<number>;
   deleteMessagesOlderThanOneWeek(): Promise<number>;
   clearAll(): Promise<void>;
+
+  // App state methods
+  saveAppState(state: Partial<AppState>): Promise<void>;
+  getAppState(): Promise<AppState | null>;
+  clearAppState(): Promise<void>;
 }

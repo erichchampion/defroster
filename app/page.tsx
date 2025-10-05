@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useGeolocation } from '@/app/hooks/useGeolocation';
 import { useMessaging } from '@/app/hooks/useMessaging';
+import { useServices } from '@/lib/contexts/ServicesContext';
 import dynamic from 'next/dynamic';
 import LocationPermission from '@/app/components/LocationPermission';
 import MessageForm from '@/app/components/MessageForm';
@@ -10,6 +11,7 @@ import MessageList from '@/app/components/MessageList';
 import { GeoLocation } from '@/lib/types/message';
 import { registerServiceWorker } from '@/lib/utils/register-sw';
 import { useI18n } from '@/lib/contexts/I18nContext';
+import { handleStateSaveError } from '@/lib/utils/error-handling';
 import {
   MESSAGE_REFRESH_INTERVAL_MS,
   CLEANUP_INTERVAL_MS,
@@ -23,6 +25,7 @@ const SightingMap = dynamic(() => import('@/app/components/SightingMap'), {
 
 export default function Home() {
   const { t } = useI18n();
+  const { storageService } = useServices();
   const {
     location,
     permissionGranted,
@@ -141,32 +144,39 @@ export default function Home() {
     await getMessages(location);
   };
 
-  // Refresh messages periodically (only when page is visible)
-  useEffect(() => {
-    if (isReady && location) {
-      const refreshMessages = () => {
-        if (!document.hidden) {
-          getMessages(location);
-        }
-      };
+  // Combined visibility change handler
+  const handleVisibilityChange = useCallback(async () => {
+    if (!document.hidden && isReady) {
+      // Update timestamp
+      await storageService.saveAppState({
+        lastActiveTimestamp: Date.now(),
+      }).catch(handleStateSaveError('update last active timestamp'));
 
-      const interval = setInterval(refreshMessages, MESSAGE_REFRESH_INTERVAL_MS);
-
-      // Also refresh when page becomes visible again
-      const handleVisibilityChange = () => {
-        if (!document.hidden) {
-          getMessages(location);
-        }
-      };
-
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-
-      return () => {
-        clearInterval(interval);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
+      // Refresh messages
+      if (location) {
+        await getMessages(location);
+      }
     }
-  }, [isReady, location, getMessages]);
+  }, [isReady, location, getMessages, storageService]);
+
+  // Refresh messages periodically and on visibility change
+  useEffect(() => {
+    if (!isReady || !location) return;
+
+    const refreshMessages = () => {
+      if (!document.hidden) {
+        getMessages(location);
+      }
+    };
+
+    const interval = setInterval(refreshMessages, MESSAGE_REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isReady, location, getMessages, handleVisibilityChange]);
 
   // Watch for location changes in the background
   useEffect(() => {
@@ -188,6 +198,64 @@ export default function Home() {
       return cleanup || undefined;
     }
   }, [isReady, permissionGranted, token, deviceId, startWatchingLocation, updateDeviceLocation, getMessages]);
+
+  // Save app readiness state to IndexedDB
+  useEffect(() => {
+    if (isReady) {
+      storageService.saveAppState({
+        appInitialized: true,
+        lastActiveTimestamp: Date.now(),
+      }).catch(handleStateSaveError('save app readiness state'));
+    }
+  }, [isReady, storageService]);
+
+  // Page lifecycle event handlers (Phase 4)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePageShow = async (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // Page was restored from bfcache (Back-Forward Cache)
+        console.log('Page restored from bfcache, refreshing state...');
+
+        // Refresh location if permission granted
+        if (permissionGranted && location) {
+          await getMessages(location);
+        }
+      }
+    };
+
+    const handlePageHide = async () => {
+      // Save state before page might be terminated
+      await storageService.saveAppState({
+        lastActiveTimestamp: Date.now(),
+      }).catch(handleStateSaveError('save state on page hide'));
+    };
+
+    const handleFreeze = () => {
+      console.log('Page frozen by browser');
+    };
+
+    const handleResume = () => {
+      console.log('Page resumed from frozen state');
+      // Refresh data when resuming
+      if (permissionGranted && location) {
+        getMessages(location);
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('freeze', handleFreeze);
+    document.addEventListener('resume', handleResume);
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('freeze', handleFreeze);
+      document.removeEventListener('resume', handleResume);
+    };
+  }, [permissionGranted, location, getMessages, storageService]);
 
   if (!permissionGranted || !location) {
     return <LocationPermission onRequestPermission={requestLocationPermission} />;

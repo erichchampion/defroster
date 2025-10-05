@@ -1,15 +1,33 @@
 import { Message, GeoLocation } from '@/lib/types/message';
 import { ILocalStorageService } from '@/lib/abstractions/local-storage-service';
+import { AppState } from '@/lib/types/app-state';
 import { distanceBetween } from 'geofire-common';
 import { GEOHASH_PRECISION_AREA } from '@/lib/constants/app';
+import { ONE_WEEK_MS, APP_STATE_MAX_AGE_MS } from '@/lib/constants/time';
 
 const DB_NAME = 'DefrosterDB';
-const DB_VERSION = 2; // Incremented for schema change
+const DB_VERSION = 3; // Incremented for app_state store
 const MESSAGES_STORE = 'messages';
-const METADATA_STORE = 'metadata'; // New store for fetch times
+const METADATA_STORE = 'metadata'; // Store for fetch times
+const APP_STATE_STORE = 'app_state'; // Store for app state
 
 export class IndexedDBStorageService implements ILocalStorageService {
   private db: IDBDatabase | null = null;
+
+  /**
+   * Ensure the database is initialized before use
+   * @returns The initialized IDBDatabase instance
+   * @throws Error if database cannot be initialized
+   */
+  private async ensureInitialized(): Promise<IDBDatabase> {
+    if (!this.db) {
+      await this.initialize();
+    }
+    if (!this.db) {
+      throw new Error('IndexedDB not initialized');
+    }
+    return this.db;
+  }
 
   async initialize(): Promise<void> {
     if (typeof window === 'undefined') {
@@ -53,18 +71,18 @@ export class IndexedDBStorageService implements ILocalStorageService {
           db.createObjectStore(METADATA_STORE, { keyPath: 'key' });
           console.log('Created metadata object store');
         }
+
+        // Create app state object store
+        if (!db.objectStoreNames.contains(APP_STATE_STORE)) {
+          db.createObjectStore(APP_STATE_STORE, { keyPath: 'key' });
+          console.log('Created app_state object store');
+        }
       };
     });
   }
 
   async saveMessage(message: Message): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([MESSAGES_STORE], 'readwrite');
@@ -90,13 +108,7 @@ export class IndexedDBStorageService implements ILocalStorageService {
   }
 
   async saveMessages(messages: Message[]): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([MESSAGES_STORE], 'readwrite');
@@ -135,13 +147,7 @@ export class IndexedDBStorageService implements ILocalStorageService {
   }
 
   async getMessagesInRadius(location: GeoLocation, radiusMiles: number): Promise<Message[]> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([MESSAGES_STORE], 'readonly');
@@ -185,13 +191,7 @@ export class IndexedDBStorageService implements ILocalStorageService {
   }
 
   async getAllMessages(): Promise<Message[]> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([MESSAGES_STORE], 'readonly');
@@ -213,13 +213,7 @@ export class IndexedDBStorageService implements ILocalStorageService {
   }
 
   async deleteMessage(id: string): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([MESSAGES_STORE], 'readwrite');
@@ -238,13 +232,7 @@ export class IndexedDBStorageService implements ILocalStorageService {
   }
 
   async deleteExpiredMessages(): Promise<number> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([MESSAGES_STORE], 'readwrite');
@@ -278,13 +266,7 @@ export class IndexedDBStorageService implements ILocalStorageService {
   }
 
   async clearAll(): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([MESSAGES_STORE], 'readwrite');
@@ -308,14 +290,8 @@ export class IndexedDBStorageService implements ILocalStorageService {
    * @param maxAgeMs Maximum age in milliseconds (default: 1 week)
    * @returns Number of messages deleted
    */
-  async deleteOldMessages(maxAgeMs: number = 7 * 24 * 60 * 60 * 1000): Promise<number> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+  async deleteOldMessages(maxAgeMs: number = ONE_WEEK_MS): Promise<number> {
+    await this.ensureInitialized();
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([MESSAGES_STORE], 'readwrite');
@@ -356,7 +332,6 @@ export class IndexedDBStorageService implements ILocalStorageService {
    * @returns Number of messages deleted
    */
   async deleteMessagesOlderThanOneWeek(): Promise<number> {
-    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     return this.deleteOldMessages(ONE_WEEK_MS);
   }
 
@@ -365,13 +340,7 @@ export class IndexedDBStorageService implements ILocalStorageService {
    * Uses 5-character geohash for ~5km precision (roughly matches our 5-mile radius)
    */
   async getLastFetchTime(geohash: string): Promise<number> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     // Use geohash area precision for grouping
     const areaKey = `fetch_${geohash.substring(0, GEOHASH_PRECISION_AREA)}`;
@@ -403,13 +372,7 @@ export class IndexedDBStorageService implements ILocalStorageService {
    * Update the last fetch timestamp for a specific geohash area
    */
   async setLastFetchTime(geohash: string, timestamp: number): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
-    if (!this.db) {
-      throw new Error('IndexedDB not initialized');
-    }
+    await this.ensureInitialized();
 
     // Use geohash area precision for grouping
     const areaKey = `fetch_${geohash.substring(0, GEOHASH_PRECISION_AREA)}`;
@@ -429,6 +392,86 @@ export class IndexedDBStorageService implements ILocalStorageService {
 
       request.onerror = () => {
         console.error('Failed to set last fetch time:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Save application state to IndexedDB
+   */
+  async saveAppState(state: Partial<AppState>): Promise<void> {
+    await this.ensureInitialized();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([APP_STATE_STORE], 'readwrite');
+      const store = transaction.objectStore(APP_STATE_STORE);
+
+      const request = store.put({
+        key: 'app_state',
+        ...state,
+        updatedAt: Date.now(),
+      });
+
+      request.onsuccess = () => {
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Failed to save app state:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Restore application state from IndexedDB
+   */
+  async getAppState(): Promise<AppState | null> {
+    await this.ensureInitialized();
+
+    return new Promise((resolve) => {
+      const transaction = this.db!.transaction([APP_STATE_STORE], 'readonly');
+      const store = transaction.objectStore(APP_STATE_STORE);
+      const request = store.get('app_state');
+
+      request.onsuccess = () => {
+        const result = request.result;
+        if (result) {
+          // Check if state is stale (older than APP_STATE_MAX_AGE_MS)
+          const age = Date.now() - (result.updatedAt || 0);
+          if (age < APP_STATE_MAX_AGE_MS) {
+            resolve(result);
+            return;
+          }
+        }
+        resolve(null);
+      };
+
+      request.onerror = () => {
+        console.error('Failed to get app state:', request.error);
+        resolve(null);
+      };
+    });
+  }
+
+  /**
+   * Clear application state
+   */
+  async clearAppState(): Promise<void> {
+    await this.ensureInitialized();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([APP_STATE_STORE], 'readwrite');
+      const store = transaction.objectStore(APP_STATE_STORE);
+      const request = store.delete('app_state');
+
+      request.onsuccess = () => {
+        resolve();
+      };
+
+      request.onerror = () => {
+        console.error('Failed to clear app state:', request.error);
         reject(request.error);
       };
     });

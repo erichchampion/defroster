@@ -3,11 +3,14 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GeoLocation } from '@/lib/types/message';
 import { getGeolocationErrorMessage } from '@/lib/utils/geolocation-errors';
-import { GEOLOCATION_TIMEOUT_MS } from '@/lib/constants/time';
+import { GEOLOCATION_OPTIONS } from '@/lib/constants/geolocation';
 import { LOCATION_WATCH_OPTIONS, SIGNIFICANT_LOCATION_CHANGE_MILES } from '@/lib/constants/app';
 import { calculateDistance } from '@/lib/utils/distance';
+import { useServices } from '@/lib/contexts/ServicesContext';
+import { handleStateSaveError } from '@/lib/utils/error-handling';
 
 export function useGeolocation() {
+  const { storageService } = useServices();
   const [location, setLocation] = useState<GeoLocation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -16,10 +19,100 @@ export function useGeolocation() {
   const onLocationChangeRef = useRef<((newLocation: GeoLocation) => void) | null>(null);
   const locationRef = useRef<GeoLocation | null>(null);
 
+  // Helper function to handle geolocation errors
+  const handleGeolocationError = (err: unknown, defaultMessage: string) => {
+    const errorMessage =
+      err instanceof GeolocationPositionError
+        ? getGeolocationErrorMessage(err)
+        : err instanceof Error
+        ? err.message
+        : defaultMessage;
+    setError(errorMessage);
+    setLoading(false);
+    return null;
+  };
+
   // Keep locationRef in sync with location state
   useEffect(() => {
     locationRef.current = location;
   }, [location]);
+
+  // Restore location state from IndexedDB on mount
+  useEffect(() => {
+    const restoreLocationState = async () => {
+      try {
+        const savedState = await storageService.getAppState();
+        if (savedState?.lastKnownLocation && savedState.locationPermissionGranted) {
+          console.log('Restoring location from IndexedDB...');
+          setLocation({
+            latitude: savedState.lastKnownLocation.latitude,
+            longitude: savedState.lastKnownLocation.longitude,
+          });
+        }
+      } catch (err) {
+        handleStateSaveError('restore location state')(err);
+      }
+    };
+
+    restoreLocationState();
+  }, [storageService]);
+
+  // Save location state to IndexedDB when it changes
+  useEffect(() => {
+    if (location && permissionGranted) {
+      storageService.saveAppState({
+        lastKnownLocation: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timestamp: Date.now(),
+        },
+        locationPermissionGranted: true,
+      }).catch(handleStateSaveError('save location state'));
+    }
+  }, [location, permissionGranted, storageService]);
+
+  // Check for existing geolocation permission on mount
+  useEffect(() => {
+    const checkExistingPermission = async () => {
+      if (typeof window === 'undefined') return;
+
+      // Check if Permissions API is available
+      if (!('permissions' in navigator)) {
+        console.log('Permissions API not available');
+        return;
+      }
+
+      try {
+        const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+
+        if (result.state === 'granted') {
+          console.log('Geolocation permission previously granted, restoring location...');
+          // Automatically restore location without user interaction
+          await requestPermission();
+        } else if (result.state === 'denied') {
+          setError('Location permission was denied');
+        }
+
+        // Listen for permission changes
+        const handlePermissionChange = () => {
+          if (result.state === 'granted') {
+            requestPermission();
+          }
+        };
+
+        result.addEventListener('change', handlePermissionChange);
+
+        // Cleanup listener on unmount
+        return () => {
+          result.removeEventListener('change', handlePermissionChange);
+        };
+      } catch (err) {
+        console.error('Failed to query geolocation permission:', err);
+      }
+    };
+
+    checkExistingPermission();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const requestPermission = async () => {
     setLoading(true);
@@ -31,11 +124,7 @@ export function useGeolocation() {
       }
 
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: GEOLOCATION_TIMEOUT_MS,
-          maximumAge: 0,
-        });
+        navigator.geolocation.getCurrentPosition(resolve, reject, GEOLOCATION_OPTIONS);
       });
 
       const newLocation = {
@@ -49,16 +138,7 @@ export function useGeolocation() {
 
       return newLocation;
     } catch (err) {
-      const errorMessage =
-        err instanceof GeolocationPositionError
-          ? getGeolocationErrorMessage(err)
-          : err instanceof Error
-          ? err.message
-          : 'Failed to get location';
-
-      setError(errorMessage);
-      setLoading(false);
-      return null;
+      return handleGeolocationError(err, 'Failed to get location');
     }
   };
 
@@ -72,11 +152,7 @@ export function useGeolocation() {
 
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: GEOLOCATION_TIMEOUT_MS,
-          maximumAge: 0,
-        });
+        navigator.geolocation.getCurrentPosition(resolve, reject, GEOLOCATION_OPTIONS);
       });
 
       const newLocation = {
@@ -89,16 +165,7 @@ export function useGeolocation() {
 
       return newLocation;
     } catch (err) {
-      const errorMessage =
-        err instanceof GeolocationPositionError
-          ? getGeolocationErrorMessage(err)
-          : err instanceof Error
-          ? err.message
-          : 'Failed to update location';
-
-      setError(errorMessage);
-      setLoading(false);
-      return null;
+      return handleGeolocationError(err, 'Failed to update location');
     }
   };
 

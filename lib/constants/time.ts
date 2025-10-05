@@ -23,3 +23,6 @@ export const LOCAL_DB_RETENTION_MS = ONE_WEEK_MS; // Keep local records for 1 we
 
 // Notification tracking retention
 export const NOTIFICATION_RECORD_RETENTION_MS = 2 * ONE_HOUR_MS; // Keep notification records for 2 hours
+
+// App state persistence
+export const APP_STATE_MAX_AGE_MS = ONE_WEEK_MS; // App state TTL: 7 days

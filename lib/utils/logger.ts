@@ -29,12 +29,14 @@ export const logger = {
   },
 
   /**
-   * Warning logs - always shown but sanitized
+   * Warning logs - only in development
    * @param context - The context/module name
    * @param args - Additional arguments to log
    */
   warn: (context: string, ...args: unknown[]) => {
-    console.warn(`[WARN:${context}]`, ...args);
+    if (isDevelopment) {
+      console.warn(`[WARN:${context}]`, ...args);
+    }
   },
 
   /**

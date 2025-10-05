@@ -6,6 +6,8 @@ import { Message, GeoLocation } from '@/lib/types/message';
 import { STORAGE_KEYS, DEFAULT_RADIUS_MILES, GEOHASH_PRECISION_AREA } from '@/lib/constants/app';
 import { FCM_TOKEN_MAX_AGE_MS } from '@/lib/constants/time';
 import { getOrCreateDeviceId } from '@/lib/utils/device-id';
+import { saveFCMToken, removeFCMToken } from '@/lib/utils/fcm-token';
+import { handleStateSaveError } from '@/lib/utils/error-handling';
 import { geohashForLocation } from 'geofire-common';
 
 export function useMessaging() {
@@ -44,8 +46,7 @@ export function useMessaging() {
         if (tokenAge < FCM_TOKEN_MAX_AGE_MS) {
           setToken(savedToken);
         } else {
-          localStorage.removeItem(STORAGE_KEYS.FCM_TOKEN);
-          localStorage.removeItem(STORAGE_KEYS.FCM_TOKEN_TIMESTAMP);
+          removeFCMToken();
         }
       }
 
@@ -76,6 +77,48 @@ export function useMessaging() {
     }
   }, [messagingService, localStorageService]);
 
+  // Check for existing notification permission and restore token on mount
+  useEffect(() => {
+    const checkExistingNotificationPermission = async () => {
+      if (typeof window === 'undefined') return;
+      if (!('Notification' in window)) return;
+
+      const currentPermission = Notification.permission;
+
+      // If permission was granted, try to restore the FCM token
+      if (currentPermission === 'granted' && !token) {
+        try {
+          console.log('Notification permission previously granted, restoring FCM token...');
+          await messagingService.initialize();
+          const fcmToken = await messagingService.getToken();
+          if (fcmToken) {
+            saveFCMToken(fcmToken);
+            setToken(fcmToken);
+            console.log('FCM token restored successfully');
+
+            // Save notification permission state
+            await localStorageService.saveAppState({
+              notificationPermissionGranted: true,
+            }).catch(handleStateSaveError('save notification permission state'));
+          }
+        } catch (err) {
+          console.error('Failed to restore FCM token:', err);
+        }
+      }
+    };
+
+    checkExistingNotificationPermission();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save notification permission state when permission is obtained
+  useEffect(() => {
+    if (permission === 'granted' && token) {
+      localStorageService.saveAppState({
+        notificationPermissionGranted: true,
+      }).catch(handleStateSaveError('save notification permission state'));
+    }
+  }, [permission, token, localStorageService]);
+
   const requestPermission = async () => {
     try {
       // Ensure messaging service is initialized (safe to call multiple times)
@@ -86,10 +129,7 @@ export function useMessaging() {
         setPermission('granted');
         const fcmToken = await messagingService.getToken();
         if (fcmToken) {
-          // Save token to localStorage with timestamp
-          localStorage.setItem(STORAGE_KEYS.FCM_TOKEN, fcmToken);
-          localStorage.setItem(STORAGE_KEYS.FCM_TOKEN_TIMESTAMP, Date.now().toString());
-
+          saveFCMToken(fcmToken);
           setToken(fcmToken);
         } else {
           setError('Push notifications unavailable (FCM token failed)');
@@ -135,13 +175,21 @@ export function useMessaging() {
       }
 
       console.log('Device registered successfully');
+
+      // Save device registration state
+      await localStorageService.saveAppState({
+        deviceRegistered: true,
+        notificationPermissionGranted: true,
+        lastDeviceRegistrationTime: Date.now(),
+      }).catch(handleStateSaveError('save device registration state'));
+
       return true;
     } catch (err) {
       setError('Failed to register device');
       console.error('Device registration error:', err);
       return false;
     }
-  }, [token, deviceId]);
+  }, [token, deviceId, localStorageService]);
 
   const updateDeviceLocation = useCallback(async (newLocation: GeoLocation) => {
     if (!token || !deviceId) {
@@ -281,11 +329,7 @@ export function useMessaging() {
 
     // Set up token refresh handler
     messagingService.onTokenRefresh((newToken) => {
-      // Save new token to localStorage
-      localStorage.setItem(STORAGE_KEYS.FCM_TOKEN, newToken);
-      localStorage.setItem(STORAGE_KEYS.FCM_TOKEN_TIMESTAMP, Date.now().toString());
-
-      // Update state
+      saveFCMToken(newToken);
       setToken(newToken);
 
       // Re-register device with new token
@@ -330,11 +374,7 @@ export function useMessaging() {
       const newToken = await messagingService.refreshToken();
 
       if (newToken) {
-        // Save new token to localStorage
-        localStorage.setItem(STORAGE_KEYS.FCM_TOKEN, newToken);
-        localStorage.setItem(STORAGE_KEYS.FCM_TOKEN_TIMESTAMP, Date.now().toString());
-
-        // Update state
+        saveFCMToken(newToken);
         setToken(newToken);
 
         // Re-register device if location provided

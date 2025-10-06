@@ -1,16 +1,34 @@
 /**
- * Rate Limiting Middleware
- * Prevents abuse by limiting requests per IP address
+ * In-Memory Rate Limiting Middleware
+ *
+ * @deprecated For local development only - use rate-limit-upstash.ts for production
+ *
+ * @remarks
+ * **IMPORTANT: Development Only**
+ * This implementation uses in-memory storage which has limitations:
+ * - Resets on server restart/redeploy
+ * - Does NOT work in serverless/multi-instance environments (Vercel, AWS Lambda, etc.)
+ * - Each instance maintains its own rate limit state
+ *
+ * **For production**, use `lib/middleware/rate-limit-upstash.ts` which uses
+ * Upstash Redis for distributed rate limiting across serverless instances.
+ *
+ * This file is kept for:
+ * - Local development without Redis
+ * - Testing rate limiting logic
+ * - Single-instance deployments (not recommended)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { RateLimitConfig, RateLimitResult } from '@/lib/types/rate-limit';
+import { getClientIdentifier } from '@/lib/utils/client-identifier';
 
 interface RateLimitRecord {
   count: number;
   resetTime: number;
 }
 
-// In-memory store (for production, use Redis or similar)
+// In-memory store (LIMITATION: not suitable for serverless/multi-instance deployments)
 const rateLimitStore = new Map<string, RateLimitRecord>();
 
 // Cleanup old entries periodically
@@ -23,25 +41,13 @@ setInterval(() => {
   }
 }, 60000); // Cleanup every minute
 
-export interface RateLimitConfig {
-  maxRequests: number;
-  windowMs: number;
-}
-
-export interface RateLimitResult {
-  allowed: boolean;
-  remaining: number;
-  resetTime: number;
-}
-
 /**
- * Check if a request should be rate limited
+ * Check if a request should be rate limited (in-memory)
  */
 export function checkRateLimit(
   request: NextRequest,
   config: RateLimitConfig = { maxRequests: 10, windowMs: 60000 }
 ): RateLimitResult {
-  // Get client identifier (IP address)
   const clientId = getClientIdentifier(request);
 
   const now = Date.now();
@@ -79,7 +85,7 @@ export function checkRateLimit(
 }
 
 /**
- * Apply rate limit check and return error response if exceeded
+ * Apply rate limit check and return error response if exceeded (in-memory)
  */
 export function applyRateLimit(
   request: NextRequest,
@@ -88,17 +94,17 @@ export function applyRateLimit(
   const result = checkRateLimit(request, config);
 
   if (!result.allowed) {
-    const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
+    const retryAfterSeconds = Math.ceil((result.resetTime - Date.now()) / 1000);
 
     return NextResponse.json(
       {
         error: 'Too many requests. Please try again later.',
-        retryAfter,
+        retryAfter: retryAfterSeconds,
       },
       {
         status: 429,
         headers: {
-          'Retry-After': retryAfter.toString(),
+          'Retry-After': retryAfterSeconds.toString(),
           'X-RateLimit-Limit': config?.maxRequests.toString() || '10',
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': new Date(result.resetTime).toISOString(),
@@ -111,31 +117,5 @@ export function applyRateLimit(
   return null;
 }
 
-/**
- * Get client identifier from request
- */
-function getClientIdentifier(request: NextRequest): string {
-  // Try to get real IP from common headers
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
-  const cfConnectingIp = request.headers.get('cf-connecting-ip');
-
-  const ip = cfConnectingIp || realIp || forwardedFor?.split(',')[0] || 'unknown';
-
-  return ip.trim();
-}
-
-/**
- * Rate limit configurations for different endpoints
- */
-export const RATE_LIMITS = {
-  // Strict limits for write operations
-  SEND_MESSAGE: { maxRequests: 5, windowMs: 60000 }, // 5 per minute
-  REGISTER_DEVICE: { maxRequests: 3, windowMs: 60000 }, // 3 per minute
-
-  // More lenient for read operations
-  GET_MESSAGES: { maxRequests: 20, windowMs: 60000 }, // 20 per minute
-
-  // Very strict for admin operations
-  CLEANUP: { maxRequests: 1, windowMs: 300000 }, // 1 per 5 minutes
-} as const;
+// Re-export RATE_LIMITS for backwards compatibility
+export { RATE_LIMITS } from '@/lib/constants/rate-limits';

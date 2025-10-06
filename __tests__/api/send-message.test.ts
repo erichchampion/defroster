@@ -24,17 +24,18 @@ jest.mock('geofire-common', () => ({
   geohashForLocation: jest.fn(() => 'mock_geohash'),
 }));
 
-jest.mock('@/lib/middleware/rate-limit', () => ({
-  applyRateLimit: jest.fn(() => null), // Return null means no rate limit error
+jest.mock('@/lib/middleware/rate-limit-upstash', () => ({
+  checkAndApplyRateLimit: jest.fn(() => null), // Return null means no rate limit error
   RATE_LIMITS: {
-    SEND_MESSAGE: { requests: 10, window: 60000 },
-    REGISTER_DEVICE: { requests: 5, window: 60000 },
-    GET_MESSAGES: { requests: 20, window: 60000 },
+    SEND_MESSAGE: { maxRequests: 5, windowMs: 60000 },
+    REGISTER_DEVICE: { maxRequests: 3, windowMs: 60000 },
+    GET_MESSAGES: { maxRequests: 20, windowMs: 60000 },
+    CLEANUP: { maxRequests: 1, windowMs: 300000 },
   },
 }));
 
 jest.mock('@/lib/middleware/auth', () => ({
-  validateApiKey: jest.fn(() => null), // Return null means valid API key
+  validateOrigin: jest.fn(() => null), // Return null means valid origin
 }));
 
 // Mock NextResponse
@@ -61,8 +62,8 @@ function createMockRequest(body: any) {
     json: async () => body,
     headers: {
       get: (key: string) => {
-        if (key === 'x-api-key') {
-          return process.env.API_SECRET_KEY || 'test-api-key';
+        if (key === 'origin') {
+          return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         }
         return null;
       },
@@ -72,8 +73,8 @@ function createMockRequest(body: any) {
 
 describe('POST /api/send-message', () => {
   beforeAll(() => {
-    // Set API key for tests
-    process.env.API_SECRET_KEY = 'test-api-key';
+    // Set base URL for origin validation tests
+    process.env.NEXT_PUBLIC_BASE_URL = 'http://localhost:3000';
   });
 
   beforeEach(() => {

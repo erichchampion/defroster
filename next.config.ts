@@ -71,8 +71,8 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: process.env.ALLOWED_ORIGIN ||
-                   (process.env.NODE_ENV === 'production' ? 'https://yourdomain.com' : '*'),
+            value: process.env.NEXT_PUBLIC_BASE_URL ||
+                   (process.env.NODE_ENV === 'production' ? 'https://preview.defroster.us' : '*'),
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -80,7 +80,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, x-api-key, Authorization',
+            value: 'Content-Type, Authorization',
           },
           {
             key: 'Access-Control-Max-Age',

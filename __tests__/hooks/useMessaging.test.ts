@@ -203,7 +203,6 @@ describe('useMessaging', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': '',
           },
           body: expect.stringContaining('mock_fcm_token'),
         })
@@ -280,7 +279,6 @@ describe('useMessaging', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': '',
         },
         body: expect.stringContaining('ICE'),
       });

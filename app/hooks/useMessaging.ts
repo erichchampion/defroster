@@ -222,7 +222,6 @@ export function useMessaging() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
         },
         body: JSON.stringify({ token: tokenToUse, deviceId: deviceIdToUse, location }),
       });
@@ -268,7 +267,6 @@ export function useMessaging() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
         },
         body: JSON.stringify({
           sightingType,
@@ -318,7 +316,6 @@ export function useMessaging() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
         },
         body: JSON.stringify({
           location,
@@ -443,7 +440,6 @@ export function useMessaging() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
               },
               body: JSON.stringify({ token: newToken, deviceId, location }),
             });

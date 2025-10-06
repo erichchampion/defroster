@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com https://unpkg.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com https://unpkg.com https://vercel.live",
               "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com",
               "img-src 'self' data: https: blob: https://*.tile.openstreetmap.org",
               "font-src 'self' data:",

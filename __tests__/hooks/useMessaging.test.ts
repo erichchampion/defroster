@@ -375,6 +375,9 @@ describe('useMessaging', () => {
         json: async () => ({ messages: mockMessages }),
       });
 
+      // Mock getMessagesInRadius to return the same messages (simulating they were saved and retrieved)
+      mockStorageService.getMessagesInRadius.mockResolvedValue(mockMessages);
+
       const { result } = renderHook(() => useMessaging(), { wrapper });
 
       await act(async () => {
@@ -383,6 +386,7 @@ describe('useMessaging', () => {
 
       expect(result.current.messages).toEqual(mockMessages);
       expect(mockStorageService.saveMessages).toHaveBeenCalledWith(mockMessages);
+      expect(mockStorageService.getMessagesInRadius).toHaveBeenCalled();
     });
 
     it('should handle empty message list', async () => {
@@ -563,6 +567,8 @@ describe('useMessaging', () => {
           ok: true,
           json: async () => ({ messages: mockMessages }),
         });
+        // Mock getMessagesInRadius to return the messages (simulating they were saved and retrieved)
+        mockStorageService.getMessagesInRadius.mockResolvedValue(mockMessages);
         await result.current.getMessages({ latitude: 37.7749, longitude: -122.4194 });
       });
 

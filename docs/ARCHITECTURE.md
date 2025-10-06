@@ -802,10 +802,11 @@ const registerDevice = useCallback(async (location, fcmToken?, devId?) => {
   }).catch(handleStateSaveError('save device registration state'));
 }, [token, deviceId, localStorageService]);
 
-// Incremental message fetching
+// Incremental message fetching with dual retention (1 week local, 1 day server)
 const getMessages = useCallback(async (location) => {
   const geohash = geohashForLocation([location.latitude, location.longitude]);
   const lastFetchTime = await localStorageService.getLastFetchTime(geohash);
+  const isIncrementalQuery = lastFetchTime > 0;
 
   if (isOffline) {
     // Load from IndexedDB
@@ -818,18 +819,24 @@ const getMessages = useCallback(async (location) => {
   const response = await fetch('/api/get-messages', {
     body: JSON.stringify({
       location,
-      sinceTimestamp: lastFetchTime > 0 ? lastFetchTime : undefined
+      sinceTimestamp: isIncrementalQuery ? lastFetchTime : undefined
     })
   });
 
   const { messages: serverMessages } = await response.json();
 
-  // Save to IndexedDB
-  await localStorageService.saveMessages(serverMessages);
+  // Save new messages to IndexedDB
+  if (serverMessages.length > 0) {
+    await localStorageService.saveMessages(serverMessages);
+  }
   await localStorageService.setLastFetchTime(geohash, Date.now());
 
-  // Merge with local messages if incremental
-  // ...
+  // ALWAYS merge with local messages to honor 1-week retention
+  // Server only keeps 1 day, but local keeps 1 week
+  const localMessages = await localStorageService.getMessagesInRadius(location, DEFAULT_RADIUS_MILES);
+
+  setMessages(localMessages);
+  return localMessages;
 }, [localStorageService, isOffline]);
 ```
 
@@ -1433,6 +1440,107 @@ x-cron-secret: <CRON_SECRET>
 
 ---
 
+## Data Retention Strategy
+
+### Dual Retention Policy
+
+Defroster implements a **dual retention strategy** to balance privacy, performance, and user experience:
+
+**Server-Side (Firestore)**: **1 day retention**
+- Messages expire after 24 hours (`MESSAGE_EXPIRATION_MS = 24 * ONE_HOUR_MS`)
+- Minimizes server storage costs
+- Reduces privacy risk (less long-term data)
+- Cleaned up hourly via cron job
+
+**Client-Side (IndexedDB)**: **1 week retention**
+- Messages stored locally for 7 days (`LOCAL_DB_RETENTION_MS = ONE_WEEK_MS`)
+- Enables offline access to historical data
+- Better user experience (see older sightings)
+- Cleaned up daily on client
+
+### Incremental Query Optimization
+
+To minimize bandwidth and server load, the app tracks the last fetch time for each geohash area and only queries for updates:
+
+**Implementation**:
+```typescript
+// app/hooks/useMessaging.ts
+const getMessages = useCallback(async (location: GeoLocation) => {
+  const geohash = geohashForLocation([location.latitude, location.longitude], GEOHASH_PRECISION_AREA);
+  const lastFetchTime = await localStorageService.getLastFetchTime(geohash);
+  const isIncrementalQuery = lastFetchTime > 0;
+
+  // Query server with sinceTimestamp for incremental updates
+  const response = await fetch('/api/get-messages', {
+    body: JSON.stringify({
+      location,
+      sinceTimestamp: isIncrementalQuery ? lastFetchTime : undefined
+    })
+  });
+
+  const { messages: serverMessages } = await response.json();
+
+  // Save new messages to IndexedDB
+  if (serverMessages.length > 0) {
+    await localStorageService.saveMessages(serverMessages);
+  }
+  await localStorageService.setLastFetchTime(geohash, Date.now());
+
+  // CRITICAL: Always query IndexedDB after saving server messages
+  // This ensures we include messages that are 1-7 days old (expired on server)
+  const localMessages = await localStorageService.getMessagesInRadius(location, DEFAULT_RADIUS_MILES);
+
+  setMessages(localMessages);
+  return localMessages;
+}, [localStorageService, isOffline]);
+```
+
+**Server-Side Filtering** (`app/api/get-messages/route.ts`):
+```typescript
+let messages = await dataService.getMessagesInRadius(location, radiusMiles);
+
+// Filter by timestamp if sinceTimestamp provided (incremental query)
+if (sinceTimestamp && sinceTimestamp > 0) {
+  messages = messages.filter(msg => msg.timestamp > sinceTimestamp);
+  logger.info('API:get-messages', `Incremental query: found ${messages.length} messages since ${new Date(sinceTimestamp).toISOString()}`);
+} else {
+  logger.info('API:get-messages', `Full query: found ${messages.length} messages`);
+}
+
+return NextResponse.json({ messages });
+```
+
+### Why Always Merge with Local Data?
+
+**Bug Fix (2025-10-05)**: The original implementation had a critical bug where initial queries would return only server data, bypassing IndexedDB. This meant:
+
+❌ **Before Fix**: Messages 1-7 days old (expired on server but valid locally) were not shown
+✅ **After Fix**: All queries merge with IndexedDB to leverage the full 1-week retention
+
+**Data Flow**:
+```
+Initial Query (first time in area):
+1. Server returns messages < 1 day old
+2. Save to IndexedDB
+3. Query IndexedDB for ALL messages < 1 week old
+4. Display merged result (server + older cached messages)
+
+Incremental Query (subsequent requests):
+1. Server returns NEW messages since last fetch
+2. Save new messages to IndexedDB
+3. Query IndexedDB for ALL messages < 1 week old
+4. Display merged result
+```
+
+**Benefits**:
+- ✅ Honors 1-week local retention policy
+- ✅ Users see all valid messages, not just fresh ones
+- ✅ Better user experience after app restarts
+- ✅ Efficient bandwidth usage (incremental updates)
+- ✅ Offline-first architecture maintained
+
+---
+
 ## Offline-First Strategy
 
 ### Service Worker
@@ -1989,7 +2097,24 @@ For questions or contributions, see the main [README.md](../README.md).
 ---
 
 **Last Updated**: 2025-10-05
-**Version**: 0.3.0
+**Version**: 0.3.1
+
+---
+
+## Changelog
+
+### v0.3.1 (2025-10-05)
+**Bug Fix**: Data merging logic in `useMessaging.ts`
+- Fixed critical bug where initial queries bypassed IndexedDB merge
+- Now always queries IndexedDB after saving server messages
+- Properly honors 1-week local retention vs 1-day server retention
+- Added comprehensive documentation of dual retention strategy
+- All 128 tests passing
+
+### v0.3.0 (Previous)
+- State persistence implementation for iOS PWA lifecycle
+- Permission auto-restoration
+- IndexedDB app state management
 
 ---
 

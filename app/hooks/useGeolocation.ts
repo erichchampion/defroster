@@ -9,6 +9,68 @@ import { calculateDistance } from '@/lib/utils/distance';
 import { useServices } from '@/lib/contexts/ServicesContext';
 import { handleStateSaveError } from '@/lib/utils/error-handling';
 
+/**
+ * React hook for managing geolocation with iOS PWA lifecycle support.
+ *
+ * @remarks
+ * Provides comprehensive geolocation management with features optimized for
+ * Progressive Web Apps, especially on iOS where apps may be terminated when
+ * backgrounded.
+ *
+ * Key features:
+ * - **Permission auto-detection**: Uses Permissions API to check existing grants
+ * - **State persistence**: Saves/restores location from IndexedDB
+ * - **Permission monitoring**: Listens for permission changes
+ * - **Location watching**: Background updates with significant change detection
+ * - **Battery optimization**: Uses network location (not GPS) for efficiency
+ * - **iOS lifecycle support**: Automatic restoration after app backgrounding
+ *
+ * The hook automatically:
+ * 1. Checks for previously granted permissions on mount
+ * 2. Restores last known location from IndexedDB
+ * 3. Auto-requests location if permission already granted
+ * 4. Saves location changes to IndexedDB for persistence
+ *
+ * @returns Object containing location state and operations
+ *
+ * @example
+ * ```typescript
+ * function MyComponent() {
+ *   const {
+ *     location,
+ *     permissionGranted,
+ *     loading,
+ *     error,
+ *     requestPermission,
+ *     startWatchingLocation
+ *   } = useGeolocation();
+ *
+ *   // Request initial permission
+ *   const handleRequestLocation = async () => {
+ *     const loc = await requestPermission();
+ *     if (loc) {
+ *       console.log('Got location:', loc);
+ *     }
+ *   };
+ *
+ *   // Start watching for location changes
+ *   useEffect(() => {
+ *     if (permissionGranted) {
+ *       const cleanup = startWatchingLocation((newLoc) => {
+ *         console.log('Location updated:', newLoc);
+ *       });
+ *       return cleanup;
+ *     }
+ *   }, [permissionGranted]);
+ *
+ *   if (loading) return <div>Getting location...</div>;
+ *   if (error) return <div>Error: {error}</div>;
+ *   if (!location) return <div>No location</div>;
+ *
+ *   return <div>Lat: {location.latitude}, Lng: {location.longitude}</div>;
+ * }
+ * ```
+ */
 export function useGeolocation() {
   const { storageService } = useServices();
   const [location, setLocation] = useState<GeoLocation | null>(null);

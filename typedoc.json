@@ -1,0 +1,36 @@
+{
+  "entryPoints": [
+    "lib/abstractions",
+    "lib/services",
+    "lib/contexts",
+    "lib/utils",
+    "lib/types",
+    "app/hooks"
+  ],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/__tests__/**",
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/app/components/**"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "readme": "README.md",
+  "plugin": [],
+  "theme": "default",
+  "name": "Defroster API Documentation",
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "sort": ["source-order"],
+  "validation": {
+    "notExported": false,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "skipErrorChecking": true
+}

@@ -10,6 +10,63 @@ import { saveFCMToken, removeFCMToken } from '@/lib/utils/fcm-token';
 import { handleStateSaveError } from '@/lib/utils/error-handling';
 import { geohashForLocation } from 'geofire-common';
 
+/**
+ * React hook for managing messaging, notifications, and sighting data.
+ *
+ * @remarks
+ * This hook provides a complete interface for:
+ * - Push notification permission and token management
+ * - Device registration for targeted notifications
+ * - Sending and receiving sighting reports
+ * - Offline-first message caching with IndexedDB
+ * - Incremental server synchronization
+ * - Network status monitoring
+ *
+ * Key features:
+ * - **Dual retention**: 1-week local cache, 1-day server retention
+ * - **Incremental queries**: Only fetch messages newer than last sync
+ * - **Auto-restoration**: Restores FCM token and permissions on mount
+ * - **Offline support**: Loads from IndexedDB when offline
+ * - **State persistence**: Saves notification state for iOS PWA lifecycle
+ *
+ * @returns Object containing messaging state and operations
+ *
+ * @example
+ * ```typescript
+ * function MyComponent() {
+ *   const {
+ *     permission,
+ *     messages,
+ *     requestPermission,
+ *     registerDevice,
+ *     sendMessage,
+ *     getMessages
+ *   } = useMessaging();
+ *
+ *   // Request notification permission
+ *   const handleEnableNotifications = async () => {
+ *     const token = await requestPermission();
+ *     if (token && currentLocation) {
+ *       await registerDevice(currentLocation);
+ *     }
+ *   };
+ *
+ *   // Send a sighting report
+ *   const handleReportSighting = async () => {
+ *     await sendMessage('ICE', sightingLocation, myLocation);
+ *   };
+ *
+ *   // Load nearby sightings
+ *   useEffect(() => {
+ *     if (currentLocation) {
+ *       getMessages(currentLocation);
+ *     }
+ *   }, [currentLocation]);
+ *
+ *   return <div>{messages.length} sightings nearby</div>;
+ * }
+ * ```
+ */
 export function useMessaging() {
   const { messagingService, storageService: localStorageService } = useServices();
   const [token, setToken] = useState<string | null>(null);

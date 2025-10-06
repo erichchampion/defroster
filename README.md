@@ -286,12 +286,25 @@ Generate coverage report:
 npm run test:coverage
 ```
 
-All 93 tests cover:
+All 128 tests cover:
 - Component rendering and interactions
 - API routes and error handling
 - Service integrations (Firebase, IndexedDB)
 - Hooks and state management
 - Geolocation and messaging
+
+### Generate API Documentation
+
+Generate TypeDoc API documentation:
+
+```bash
+npm run docs
+```
+
+This generates comprehensive API documentation from TypeScript/JSDoc comments into `docs/api/`.
+The documentation covers all abstractions, services, contexts, hooks, and utilities.
+
+View the generated documentation by opening `docs/api/index.html` in your browser.
 
 ---
 

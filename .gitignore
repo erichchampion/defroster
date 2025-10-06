@@ -43,6 +43,7 @@ next-env.d.ts
 
 # auto-generated files
 /public/firebase-messaging-sw.js
+/docs/api
 
 # Firebase environment-specific config
 .firebaserc

@@ -141,6 +141,20 @@ export default function LocationPermission({ onRequestPermission }: LocationPerm
               <li>• {t.locationPermission.privacyNotice.revokeAccess}</li>
             </ul>
           </div>
+
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-gray-700">
+              <strong>{t.locationPermission.knowYourRights.heading}</strong> {t.locationPermission.knowYourRights.description}{' '}
+              <a
+                href={t.locationPermission.knowYourRights.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                {t.locationPermission.knowYourRights.url}
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

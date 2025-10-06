@@ -352,6 +352,20 @@ export default function Home() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t.main.nearbySightingsListHeading}</h2>
           <MessageList messages={messages} />
         </div>
+
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-gray-700">
+            <strong>{t.main.knowYourRights.heading}</strong> {t.main.knowYourRights.description}{' '}
+            <a
+              href={t.main.knowYourRights.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              {t.main.knowYourRights.url}
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );

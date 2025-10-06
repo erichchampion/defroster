@@ -25,6 +25,11 @@
       "noPersonalData": "Nunca se almacenan datos personales",
       "revokeAccess": "Puedes revocar el acceso a la ubicación en cualquier momento"
     },
+    "knowYourRights": {
+      "heading": "CONOZCA SUS DERECHOS",
+      "description": "cuando el Servicio de Inmigración y Control de Aduanas (ICE) está en la puerta:",
+      "url": "https://www.aclusocal.org/icenotwelcome"
+    },
     "story": {
       "paragraph1": "En las primeras horas del 2 de octubre, un edificio de apartamentos en South Shore Drive en Chicago fue destrozado por una redada federal. Agentes de Border Patrol, el FBI y la ATF irrumpieron en el complejo de cinco pisos con helicópteros, vehículos blindados y granadas aturdidoras. Las familias fueron sacadas de sus hogares, esposadas con bridas en la calle—algunas sin ropa—y dejadas afuera durante horas. Al amanecer, todos menos 37 fueron liberados, pero los residentes regresaron a apartamentos destrozados y una comunidad profundamente conmocionada.",
       "paragraph2": "Incidentes como este resaltan la necesidad urgente de herramientas que protejan e informen. {appName} es una aplicación anónima y de {openSourceLink} que permite a los usuarios reportar actividad de Immigration and Customs Enforcement (ICE) con solo tocar su pantalla. La plataforma nunca almacena datos personales, elimina automáticamente los reportes del servidor después de un día y alerta a comunidades dentro de un radio de cinco millas. Con Defroster, las personas pueden mantenerse seguras, informadas y conectadas, mientras permanecen completamente anónimas.",
@@ -44,6 +49,11 @@
     "iosNotificationGuide": {
       "heading": "📱 Usuarios de iOS:",
       "instructions": "Para habilitar notificaciones push en iOS, toca el botón Compartir y selecciona \"Agregar a la pantalla de inicio\""
+    },
+    "knowYourRights": {
+      "heading": "CONOZCA SUS DERECHOS",
+      "description": "cuando el Servicio de Inmigración y Control de Aduanas (ICE) está en la puerta:",
+      "url": "https://www.aclusocal.org/icenotwelcome"
     }
   },
   "messageForm": {

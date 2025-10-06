@@ -16,7 +16,7 @@ import { AppState } from '@/lib/types/app-state';
  * - Incremental fetch tracking per geohash area
  * - Application state persistence for iOS PWA lifecycle support
  *
- * @see {@link IndexedDBStorageService} for the default implementation
+ * @see {@link lib/services/indexeddb-storage-service.IndexedDBStorageService} for the default implementation
  *
  * @example
  * ```typescript

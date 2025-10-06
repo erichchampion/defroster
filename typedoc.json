@@ -27,6 +27,14 @@
   "includeVersion": true,
   "categorizeByGroup": true,
   "sort": ["source-order"],
+  "highlightLanguages": [
+    "typescript",
+    "javascript",
+    "bash",
+    "json",
+    "shell",
+    "nginx"
+  ],
   "validation": {
     "notExported": false,
     "invalidLink": true,

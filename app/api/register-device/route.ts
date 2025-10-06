@@ -3,19 +3,19 @@ import { geohashForLocation } from 'geofire-common';
 import { getDataService } from '@/lib/services/data-service-singleton';
 import { validateLocation } from '@/lib/utils/validation';
 import { GEOHASH_PRECISION_DEVICE } from '@/lib/constants/app';
-import { validateApiKey } from '@/lib/middleware/auth';
-import { applyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit';
+import { validateOrigin } from '@/lib/middleware/auth';
+import { checkAndApplyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit-upstash';
 import { logger } from '@/lib/utils/logger';
 
 const dataService = getDataService();
 
 export async function POST(request: NextRequest) {
-  // Apply authentication
-  const authError = validateApiKey(request);
+  // Apply origin validation
+  const authError = validateOrigin(request);
   if (authError) return authError;
 
   // Apply rate limiting
-  const rateLimitError = applyRateLimit(request, RATE_LIMITS.REGISTER_DEVICE);
+  const rateLimitError = await checkAndApplyRateLimit(request, RATE_LIMITS.REGISTER_DEVICE);
   if (rateLimitError) return rateLimitError;
 
   try {

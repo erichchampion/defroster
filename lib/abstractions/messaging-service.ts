@@ -12,7 +12,7 @@ import { Message } from '@/lib/types/message';
  * cross-platform push notifications with service worker support for
  * background message handling.
  *
- * @see {@link FCMMessagingService} for the Firebase implementation
+ * @see {@link lib/services/fcm-messaging-service.FCMMessagingService} for the Firebase implementation
  *
  * @example
  * ```typescript

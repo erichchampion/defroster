@@ -1,43 +1,49 @@
 /**
  * API Authentication Middleware
- * Validates requests using API key authentication
+ * Validates requests using origin validation (BFF pattern)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 
-export function validateApiKey(request: NextRequest): NextResponse | null {
-  const apiKey = request.headers.get('x-api-key');
-  const expectedKey = process.env.API_SECRET_KEY;
+/**
+ * Validates that the request originates from the allowed domain
+ * Uses NEXT_PUBLIC_BASE_URL to determine the allowed origin
+ */
+export function validateOrigin(request: NextRequest): NextResponse | null {
+  const origin = request.headers.get('origin');
+  const allowedOrigin = process.env.NEXT_PUBLIC_BASE_URL;
 
-  // Always require API key - no exceptions
-  if (!expectedKey) {
-    console.error('CRITICAL: API_SECRET_KEY not configured');
+  if (!allowedOrigin) {
+    console.error('CRITICAL: NEXT_PUBLIC_BASE_URL not configured');
     return NextResponse.json(
       { error: 'Server configuration error' },
       { status: 500 }
     );
   }
 
-  if (!apiKey) {
+  // In development, allow localhost origins
+  if (process.env.NODE_ENV === 'development') {
+    if (origin?.startsWith('http://localhost:')) {
+      return null;
+    }
+  }
+
+  // Validate origin matches the allowed base URL
+  if (origin !== allowedOrigin) {
     return NextResponse.json(
-      { error: 'Missing API key. Include x-api-key header.' },
-      { status: 401 }
+      { error: 'Unauthorized origin' },
+      { status: 403 }
     );
   }
 
-  if (apiKey !== expectedKey) {
-    return NextResponse.json(
-      { error: 'Invalid API key' },
-      { status: 401 }
-    );
-  }
-
-  // Authentication successful
+  // Validation successful
   return null;
 }
 
 /**
  * Validates cron job requests using a secret token
+ * Uses constant-time comparison to prevent timing attacks
  */
 export function validateCronSecret(request: NextRequest): NextResponse | null {
   const authHeader = request.headers.get('authorization');
@@ -54,7 +60,28 @@ export function validateCronSecret(request: NextRequest): NextResponse | null {
 
   const token = authHeader?.replace('Bearer ', '');
 
-  if (token !== expectedSecret) {
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+
+  // Use constant-time comparison to prevent timing attacks
+  try {
+    const tokenBuffer = Buffer.from(token, 'utf-8');
+    const expectedBuffer = Buffer.from(expectedSecret, 'utf-8');
+
+    if (tokenBuffer.length !== expectedBuffer.length ||
+        !timingSafeEqual(tokenBuffer, expectedBuffer)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+  } catch {
+    // timingSafeEqual can throw if buffers have different lengths
+    // This is already handled above, but catch any unexpected errors
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }

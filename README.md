@@ -89,7 +89,7 @@ cp .env.local.example .env.local
 
 Edit `.env.local` with your Firebase credentials:
 
-```env
+```bash
 # Firebase Web Configuration
 NEXT_PUBLIC_FIREBASE_API_KEY=AIza...
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
@@ -100,17 +100,43 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-ABC123
 NEXT_PUBLIC_FIREBASE_VAPID_KEY=BN4bX... (from step 4 above)
 
-# Generate secure keys (run: openssl rand -hex 32)
-NEXT_PUBLIC_API_KEY=your_32_character_hex_key
-API_SECRET_KEY=same_as_next_public_api_key_above
-CRON_SECRET=another_32_character_hex_key
+# Base URL for origin validation (REQUIRED)
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Generate secure CRON secret (run: openssl rand -hex 32)
+CRON_SECRET=your_64_character_hex_key
+
+# Upstash Redis for distributed rate limiting (optional for development, required for production)
+# UPSTASH_REDIS_REST_URL=https://...upstash.io
+# UPSTASH_REDIS_REST_TOKEN=...
 
 # For production (optional for development)
 FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
-ALLOWED_ORIGIN=http://localhost:3000
 ```
 
-### 4. Firebase Admin SDK (Optional for Development)
+### 4. Upstash Redis Setup (Required for Production)
+
+For distributed rate limiting across serverless instances:
+
+1. Go to [Upstash Console](https://console.upstash.com/)
+2. Create a new Redis database (free tier available)
+3. Click on your database to view details
+4. Copy the **REST API** credentials:
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+5. Add these to your `.env.local` file
+
+**Why Upstash Redis is required:**
+- In-memory rate limiting doesn't work in serverless (Vercel, AWS Lambda)
+- Each serverless instance would have separate counters
+- Attackers could bypass rate limits by hitting different instances
+- Upstash Redis provides shared state across all instances
+
+**Development note:** The app will run without Upstash Redis (rate limiting disabled), but you'll see warnings. This is acceptable for local development.
+
+**Pricing:** Upstash offers a generous free tier with 10,000 commands per day.
+
+### 5. Firebase Admin SDK (Optional for Development)
 
 For local development, the app will work without the Admin SDK for notifications. For full functionality:
 
@@ -119,13 +145,13 @@ For local development, the app will work without the Admin SDK for notifications
 3. Download the JSON file
 4. Copy the entire JSON content and add to `.env.local`:
 
-```env
+```bash
 FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account","project_id":"your-project",...}'
 ```
 
 **Note:** For development, you can skip this and notifications will be simulated client-side.
 
-### 5. Firestore Security Rules
+### 6. Firestore Security Rules
 
 Deploy the security rules:
 
@@ -147,7 +173,7 @@ The `firestore.rules` file is already configured with secure rules:
 - ✅ Messages: Public read, server-write only
 - ✅ Devices: No client access (Admin SDK only)
 
-### 6. Firestore Indexes
+### 7. Firestore Indexes
 
 Firestore will prompt you to create indexes when you first query. Alternatively, create them manually:
 
@@ -159,7 +185,7 @@ Firestore will prompt you to create indexes when you first query. Alternatively,
    - Collection ID: `devices`
    - Fields: `geohash` (Ascending), `updatedAt` (Ascending)
 
-### 7. Run Development Server
+### 8. Run Development Server
 
 ```bash
 npm run dev
@@ -474,40 +500,85 @@ defroster/
 ### Current Security Features
 
 ✅ **Firestore Security Rules**: Server-write only for messages and devices
-✅ **API Key Validation**: All API routes require valid key
-✅ **CORS Protection**: Configurable allowed origins
-✅ **Input Validation**: All user inputs validated
-✅ **Rate Limiting**: Recommended for production (see below)
+✅ **Origin Validation (BFF Pattern)**: API routes validate request origin using NEXT_PUBLIC_BASE_URL
+✅ **CORS Protection**: Strict origin enforcement
+✅ **Input Validation**: All user inputs validated with type checking and range limits
+✅ **Distributed Rate Limiting**: Upstash Redis-based rate limiting (5/min sends, 3/min registrations, 20/min reads)
+✅ **Timing Attack Protection**: Constant-time comparison for CRON secrets
+✅ **Security Headers**: CSP, X-Frame-Options, X-Content-Type-Options, HSTS
 ✅ **No XSS Vulnerabilities**: React sanitizes all inputs
 ✅ **HTTPS Only**: Enforced in production
+✅ **Environment Validation**: Startup checks for required configuration
 
-### Recommended Production Hardening
+### Security Architecture: BFF Pattern
 
-1. **Rate Limiting**:
-   ```typescript
-   // Add to API routes
-   import rateLimit from 'express-rate-limit';
+This app uses the **Backend-for-Frontend (BFF)** pattern for security:
 
-   const limiter = rateLimit({
-     windowMs: 15 * 60 * 1000, // 15 minutes
-     max: 100 // limit each IP to 100 requests per windowMs
-   });
-   ```
+- **Client** makes requests without exposed API keys
+- **Next.js API Routes** validate the request origin matches `NEXT_PUBLIC_BASE_URL`
+- **Server-side secrets** (CRON_SECRET, Firebase Admin SDK) never exposed to clients
 
-2. **Environment Variables**:
-   - Never commit `.env.local`
-   - Use secrets management (Vercel Secrets, AWS Secrets Manager, etc.)
-   - Rotate API keys and cron secrets regularly
+This prevents the critical vulnerability where API keys are embedded in client JavaScript.
 
-3. **Monitoring**:
-   - Set up error tracking (Sentry, LogRocket, etc.)
-   - Monitor Firestore usage and costs
-   - Set up alerts for unusual activity
+### Important Production Considerations
 
-4. **Firestore Security**:
-   - Review and test security rules regularly
-   - Enable audit logging
-   - Set up billing alerts
+#### 1. **Distributed Rate Limiting with Upstash Redis**
+
+✅ **Now implemented** using Upstash Redis for serverless-friendly rate limiting:
+- Works across multiple serverless instances on Vercel
+- Persists between deployments
+- Shared state across all instances
+- Automatic cleanup via Redis TTL
+- Simple configuration with REST API
+
+**Setup required:**
+1. Create account at [Upstash Console](https://console.upstash.com/)
+2. Create a Redis database
+3. Copy REST API credentials to environment variables
+4. See [Setup section](#4-upstash-redis-setup-required-for-production) above
+
+**How it works:**
+```typescript
+// Rate limiting uses Upstash Redis REST API
+import { Redis } from '@upstash/redis';
+
+const count = await redis.incr(`ratelimit:${clientId}`);
+if (count === 1) {
+  await redis.expire(key, windowSeconds);
+}
+```
+
+**Fallback behavior:** If Upstash Redis is not configured, rate limiting is disabled (with warnings). This allows development without Redis, but **production deployments should always configure Upstash Redis**.
+
+#### 2. **Environment Variables**
+
+- Never commit `.env.local` to version control
+- Use secrets management (Vercel Environment Variables, AWS Secrets Manager, etc.)
+- Rotate CRON_SECRET regularly (recommended: quarterly)
+- Ensure `NEXT_PUBLIC_BASE_URL` matches your production domain exactly
+- **Required for production:** Configure Upstash Redis for distributed rate limiting
+
+#### 3. **Monitoring & Alerting**
+
+Set up monitoring for:
+- Unusual spike in API requests (potential abuse)
+- 403 errors (origin validation failures)
+- 429 errors (rate limit hits)
+- Firestore quota usage
+- Failed notification deliveries
+
+Recommended tools:
+- Error tracking: Sentry, LogRocket
+- Uptime monitoring: Better Uptime, UptimeRobot
+- Firestore alerts: Firebase Console → Usage and billing
+
+#### 4. **Firestore Security**
+
+- Security rules are already configured (see `firestore.rules`)
+- Review rules regularly, especially if modifying data structure
+- Enable audit logging in Firebase Console
+- Set up billing alerts to prevent unexpected costs
+- Consider Firestore backup strategy for disaster recovery
 
 ---
 

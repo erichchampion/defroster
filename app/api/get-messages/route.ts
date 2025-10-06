@@ -2,19 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDataService } from '@/lib/services/data-service-singleton';
 import { validateLocation, validateRadius } from '@/lib/utils/validation';
 import { DEFAULT_RADIUS_MILES } from '@/lib/constants/app';
-import { validateApiKey } from '@/lib/middleware/auth';
-import { applyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit';
+import { validateOrigin } from '@/lib/middleware/auth';
+import { checkAndApplyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit-upstash';
 import { logger } from '@/lib/utils/logger';
 
 const dataService = getDataService();
 
 export async function POST(request: NextRequest) {
-  // Apply authentication
-  const authError = validateApiKey(request);
+  // Apply origin validation
+  const authError = validateOrigin(request);
   if (authError) return authError;
 
   // Apply rate limiting
-  const rateLimitError = applyRateLimit(request, RATE_LIMITS.GET_MESSAGES);
+  const rateLimitError = await checkAndApplyRateLimit(request, RATE_LIMITS.GET_MESSAGES);
   if (rateLimitError) return rateLimitError;
 
   try {

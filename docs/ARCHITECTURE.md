@@ -107,6 +107,8 @@ Defroster is a Progressive Web Application (PWA) built with a **privacy-first**,
 - **CDN**: Vercel Edge Network / Cloudflare
 - **Functions**: Firebase Cloud Functions (scheduled tasks) + Next.js API Routes
 - **Storage**: IndexedDB (client-side)
+- **Rate Limiting**: Upstash Redis (distributed, serverless-compatible)
+- **Cron Jobs**: Vercel Cron (scheduled cleanup)
 
 ---
 
@@ -961,43 +963,217 @@ const oldMessages = await index.openCursor(IDBKeyRange.upperBound(cutoff));
 
 ### 5. API Security
 
-**Authentication**:
+Defroster implements a **Backend-for-Frontend (BFF)** security pattern to protect API routes without exposing secrets to clients.
+
+#### Origin Validation (BFF Pattern)
+
+Instead of embedding API keys in client code (which can be extracted), the app validates that requests come from the legitimate application origin:
+
 ```typescript
-// app/api/send-message/route.ts
-export async function POST(request: Request) {
-  // Validate API key
-  const apiKey = request.headers.get('x-api-key');
-  if (apiKey !== process.env.API_SECRET_KEY) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+// lib/middleware/auth.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export function validateOrigin(request: NextRequest): NextResponse | null {
+  const origin = request.headers.get('origin');
+  const allowedOrigin = process.env.NEXT_PUBLIC_BASE_URL;
+
+  // Allow localhost in development
+  if (process.env.NODE_ENV === 'development') {
+    if (origin?.startsWith('http://localhost:')) {
+      return null;
+    }
   }
 
-  // Validate CORS
-  const origin = request.headers.get('origin');
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
-  if (origin !== allowedOrigin && allowedOrigin !== '*') {
+  // Validate origin matches configured base URL
+  if (origin !== allowedOrigin) {
     return NextResponse.json(
-      { error: 'Forbidden' },
+      { error: 'Unauthorized origin' },
       { status: 403 }
     );
   }
 
-  // Process request...
+  return null;
 }
 ```
 
-**Cron Job Protection**:
+**Usage in API Routes**:
 ```typescript
-// app/api/cleanup-messages/route.ts
-const cronSecret = request.headers.get('x-cron-secret');
-if (cronSecret !== process.env.CRON_SECRET) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// app/api/send-message/route.ts
+import { validateOrigin } from '@/lib/middleware/auth';
+import { checkAndApplyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit-upstash';
+
+export async function POST(request: Request) {
+  // 1. Validate request origin (BFF pattern)
+  const authError = validateOrigin(request);
+  if (authError) return authError;
+
+  // 2. Apply rate limiting
+  const rateLimitError = await checkAndApplyRateLimit(request, RATE_LIMITS.SEND_MESSAGE);
+  if (rateLimitError) return rateLimitError;
+
+  // 3. Process request...
+}
+```
+
+**Why this approach?**
+- ✅ No exposed API keys in client code
+- ✅ CORS protection prevents unauthorized domains
+- ✅ Simple to implement and maintain
+- ✅ Works with standard browser security features
+- ⚠️ Not suitable if you need third-party API access
+
+#### Distributed Rate Limiting (Upstash Redis)
+
+In-memory rate limiting doesn't work in serverless environments where each request may hit a different instance. Upstash Redis provides shared state across all serverless functions:
+
+```typescript
+// lib/middleware/rate-limit-upstash.ts
+import { Redis } from '@upstash/redis';
+import { NextRequest, NextResponse } from 'next/server';
+
+let redis: Redis | null = null;
+
+function getRedisClient(): Redis | null {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    console.warn('⚠️  Upstash Redis not configured - rate limiting will be disabled');
+    return null;
+  }
+
+  if (!redis) {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redis;
+}
+
+export async function checkAndApplyRateLimit(
+  request: NextRequest,
+  config: RateLimitConfig
+): Promise<NextResponse | null> {
+  const redis = getRedisClient();
+
+  // Fail open if Redis unavailable (development mode)
+  if (!redis) {
+    return null;
+  }
+
+  const clientId = getClientIdentifier(request); // IP-based
+  const key = `ratelimit:${clientId}`;
+  const windowSeconds = Math.ceil(config.windowMs / 1000);
+
+  // Atomic increment with Redis
+  const count = await redis.incr(key);
+
+  // Set expiration on first request
+  if (count === 1) {
+    await redis.expire(key, windowSeconds);
+  }
+
+  // Check if limit exceeded
+  if (count > config.maxRequests) {
+    const ttl = await redis.ttl(key);
+    const resetTime = Date.now() + (ttl * 1000);
+
+    return NextResponse.json(
+      {
+        error: 'Too many requests',
+        retryAfter: Math.ceil(ttl),
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': Math.ceil(ttl).toString(),
+          'X-RateLimit-Limit': config.maxRequests.toString(),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': resetTime.toString(),
+        },
+      }
+    );
+  }
+
+  return null;
+}
+
+// Rate limit configurations
+export const RATE_LIMITS = {
+  SEND_MESSAGE: { maxRequests: 5, windowMs: 60000 },      // 5 per minute
+  REGISTER_DEVICE: { maxRequests: 3, windowMs: 60000 },   // 3 per minute
+  GET_MESSAGES: { maxRequests: 20, windowMs: 60000 },     // 20 per minute
+  CLEANUP: { maxRequests: 1, windowMs: 300000 },          // 1 per 5 minutes
+} as const;
+```
+
+**Why Upstash Redis?**
+- ✅ Works in serverless environments (Vercel, AWS Lambda)
+- ✅ Shared state across all function instances
+- ✅ Low latency with edge-compatible REST API
+- ✅ Automatic cleanup via TTL (no manual cleanup needed)
+- ✅ Free tier available (10,000 commands/day)
+- ✅ No connection pooling needed (REST API)
+
+**Alternative: In-Memory (Development Only)**
+```typescript
+// ⚠️ Only for local development - does NOT work in production serverless
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+```
+
+#### Cron Job Protection (Timing-Safe)
+
+The `/api/cleanup-messages` endpoint is protected with a secret token using constant-time comparison to prevent timing attacks:
+
+```typescript
+// lib/middleware/auth.ts
+import { timingSafeEqual } from 'crypto';
+
+export function validateCronSecret(request: NextRequest): NextResponse | null {
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.replace('Bearer ', '');
+  const expectedSecret = process.env.CRON_SECRET;
+
+  if (!expectedSecret) {
+    console.error('CRON_SECRET not configured');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Constant-time comparison to prevent timing attacks
+  const tokenBuffer = Buffer.from(token, 'utf-8');
+  const expectedBuffer = Buffer.from(expectedSecret, 'utf-8');
+
+  if (tokenBuffer.length !== expectedBuffer.length ||
+      !timingSafeEqual(tokenBuffer, expectedBuffer)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return null;
+}
+```
+
+**Why constant-time comparison?**
+- ❌ `token === expectedSecret` - Vulnerable to timing attacks
+- ✅ `timingSafeEqual(token, expected)` - Prevents timing attacks by always taking the same time regardless of where strings differ
+
+**Vercel Cron Configuration** (`vercel.json`):
+```json
+{
+  "crons": [{
+    "path": "/api/cleanup-messages",
+    "schedule": "0 * * * *",
+    "headers": {
+      "authorization": "Bearer $CRON_SECRET"
+    }
+  }]
 }
 ```
 
 ### 6. Firestore Security Rules
+
+Firestore security rules enforce server-write only access, preventing client-side data manipulation:
 
 **Location**: `firestore.rules`
 
@@ -1009,12 +1185,18 @@ service cloud.firestore {
 
     // Messages: Public read, server-write only
     match /messages/{messageId} {
-      allow read: if true;  // Anyone can read
+      allow read: if true;  // Anyone can read messages
       allow write: if false; // Only Admin SDK can write
     }
 
     // Devices: No client access
     match /devices/{deviceId} {
+      allow read: if false;  // Only Admin SDK (privacy)
+      allow write: if false; // Only Admin SDK
+    }
+
+    // Notifications: Server-only access
+    match /notifications/{notificationId} {
       allow read: if false;  // Only Admin SDK
       allow write: if false; // Only Admin SDK
     }
@@ -1028,10 +1210,21 @@ service cloud.firestore {
 ```
 
 **Why server-write only?**
-- Prevents spam/fake reports
-- Validates data server-side
-- Controls notification sending
-- Enables abuse detection
+- ✅ Prevents spam and fake reports
+- ✅ Server validates all data (location, timestamps, types)
+- ✅ Controls notification sending (prevents abuse)
+- ✅ Enables rate limiting and abuse detection
+- ✅ Protects device tokens from being read by clients
+- ✅ Prevents clients from manipulating expiration times
+
+**Deployment**:
+```bash
+# Deploy security rules
+firebase deploy --only firestore:rules
+
+# Test rules locally
+firebase emulators:start --only firestore
+```
 
 ---
 
@@ -1243,12 +1436,12 @@ class IndexedDBStorageService implements ILocalStorageService {
 
 ### Endpoint Overview
 
-| Endpoint | Method | Auth | Purpose |
-|----------|--------|------|---------|
-| `/api/send-message` | POST | API Key | Create sighting report |
-| `/api/get-messages` | POST | API Key | Fetch nearby sightings |
-| `/api/register-device` | POST | API Key | Register for notifications |
-| `/api/cleanup-messages` | POST | Cron Secret | Delete expired messages |
+| Endpoint | Method | Auth | Rate Limit | Purpose |
+|----------|--------|------|------------|---------|
+| `/api/send-message` | POST | Origin | 5/min | Create sighting report |
+| `/api/get-messages` | POST | Origin | 20/min | Fetch nearby sightings |
+| `/api/register-device` | POST | Origin | 3/min | Register for notifications |
+| `/api/cleanup-messages` | POST | Cron Secret | 1/5min | Delete expired messages |
 
 ### 1. POST /api/send-message
 
@@ -1268,7 +1461,7 @@ class IndexedDBStorageService implements ILocalStorageService {
 
 **Headers**:
 ```
-x-api-key: <API_SECRET_KEY>
+Origin: https://yourdomain.com
 Content-Type: application/json
 ```
 
@@ -1282,15 +1475,17 @@ Content-Type: application/json
 ```
 
 **Process Flow**:
-1. Validate API key
-2. Validate input (lat/lng, sighting type)
-3. Generate message ID (UUID)
-4. Calculate geohash (7 chars)
-5. Set expiration (now + 1 hour)
-6. Save to Firestore
-7. Find nearby devices (5-mile radius)
-8. Send FCM notifications
-9. Return success
+1. Validate origin (BFF pattern)
+2. Apply rate limiting (Upstash Redis)
+3. Validate input (lat/lng, sighting type, timestamp)
+4. Generate message ID (UUID v4)
+5. Calculate geohash (7 chars)
+6. Set expiration (now + 24 hours)
+7. Save to Firestore
+8. Find nearby devices (5-mile radius)
+9. Send FCM notifications via Admin SDK
+10. Record notification deliveries
+11. Return success with notification count
 
 **Error Handling**:
 ```typescript
@@ -1327,13 +1522,15 @@ try {
 ```
 
 **Process Flow**:
-1. Validate API key
-2. Calculate geohash bounds for 5-mile radius
-3. Query Firestore with bounds
-4. Filter out expired messages
-5. Calculate actual distance (great circle)
-6. Filter by exact radius
-7. Return sorted by timestamp
+1. Validate origin (BFF pattern)
+2. Apply rate limiting (Upstash Redis)
+3. Validate location coordinates
+4. Calculate geohash bounds for 5-mile radius
+5. Query Firestore with bounds
+6. Filter by sinceTimestamp if provided (incremental query)
+7. Calculate actual distance (great circle)
+8. Filter by exact radius
+9. Return sorted by timestamp (newest first)
 
 **Geohash Query**:
 ```typescript
@@ -1376,13 +1573,15 @@ const messages = snapshots.flat();
 ```
 
 **Process Flow**:
-1. Validate API key
-2. Validate FCM token format
-3. Validate device ID (UUID)
-4. Calculate geohash
-5. Upsert device document (deviceId as doc ID)
-6. Set updatedAt timestamp
-7. Return success
+1. Validate origin (BFF pattern)
+2. Apply rate limiting (Upstash Redis)
+3. Validate FCM token format (140-300 chars, alphanumeric)
+4. Validate device ID format (UUID v4)
+5. Validate location coordinates
+6. Calculate geohash (7 chars for privacy)
+7. Upsert device document (deviceId as doc ID)
+8. Set updatedAt timestamp
+9. Return success
 
 **Upsert Logic**:
 ```typescript
@@ -1408,7 +1607,7 @@ await firestore
 
 **Headers**:
 ```
-x-cron-secret: <CRON_SECRET>
+Authorization: Bearer <CRON_SECRET>
 ```
 
 **Response**:
@@ -1420,10 +1619,13 @@ x-cron-secret: <CRON_SECRET>
 ```
 
 **Process Flow**:
-1. Validate cron secret
-2. Query messages where `expiresAt < now`
-3. Batch delete (max 500 per batch)
-4. Return deleted count
+1. Validate cron secret (timing-safe comparison)
+2. Apply rate limiting (1 per 5 minutes)
+3. Query messages where `expiresAt < now`
+4. Batch delete (max 500 per batch)
+5. Return deleted count
+
+**Note**: Messages expire after 24 hours on server. Clients maintain local copies for up to 1 week.
 
 **Scheduling** (Vercel Cron):
 ```json
@@ -2021,7 +2223,7 @@ First Load JS shared        102 kB
 
 **Required**:
 ```bash
-# Firebase (from Firebase Console)
+# Firebase Client Configuration (from Firebase Console)
 NEXT_PUBLIC_FIREBASE_API_KEY=
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=
@@ -2031,35 +2233,47 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
 NEXT_PUBLIC_FIREBASE_VAPID_KEY=
 
-# Firebase Admin SDK (service account JSON)
+# Firebase Admin SDK (service account JSON - server-side only)
 FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
 
-# API Security (generate: openssl rand -hex 32)
-NEXT_PUBLIC_API_KEY=
-API_SECRET_KEY=
-CRON_SECRET=
+# Base URL for origin validation (BFF pattern)
+NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 
-# CORS (production domain)
-ALLOWED_ORIGIN=https://yourdomain.com
+# Cron secret for scheduled cleanup (generate: openssl rand -hex 32)
+CRON_SECRET=your_64_character_hex_key
+
+# Upstash Redis for rate limiting (from Upstash Console)
+UPSTASH_REDIS_REST_URL=https://...upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_token_here
 ```
+
+**Security Notes**:
+- `NEXT_PUBLIC_*` variables are exposed to the client (safe for Firebase config)
+- `FIREBASE_SERVICE_ACCOUNT_KEY` is server-only (never exposed to client)
+- `CRON_SECRET` should be at least 32 characters for security
+- `NEXT_PUBLIC_BASE_URL` must exactly match production domain
+- Upstash Redis credentials are server-only
 
 ### Scaling Considerations
 
 **10K users**:
 - ✅ Firebase Spark (free) tier
 - ✅ Vercel Hobby (free) tier
+- ✅ Upstash Redis free tier (10K commands/day)
 - ✅ No optimizations needed
 
 **100K users**:
 - 💡 Firebase Blaze (pay-as-you-go)
 - 💡 Vercel Pro ($20/month)
+- 💡 Upstash paid tier or Pro plan
 - 💡 Enable CDN caching
 - 💡 Optimize Firestore queries
 
 **1M+ users**:
 - 🔧 Database sharding by region
 - 🔧 Read replicas
-- 🔧 Redis caching layer
+- 🔧 Upstash Pro with regional instances
+- 🔧 CDN for static assets
 - 🔧 Dedicated infrastructure
 
 ### Monitoring

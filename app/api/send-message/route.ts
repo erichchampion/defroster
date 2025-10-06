@@ -6,19 +6,19 @@ import { Message } from '@/lib/types/message';
 import { validateLocation } from '@/lib/utils/validation';
 import { DEFAULT_RADIUS_MILES, GEOHASH_PRECISION_DEVICE } from '@/lib/constants/app';
 import { MESSAGE_EXPIRATION_MS, TIMESTAMP_TOLERANCE_MS } from '@/lib/constants/time';
-import { validateApiKey } from '@/lib/middleware/auth';
-import { applyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit';
+import { validateOrigin } from '@/lib/middleware/auth';
+import { checkAndApplyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit-upstash';
 import { logger } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   // Get service instance inside function for better testability
   const dataService = getDataService();
-  // Apply authentication
-  const authError = validateApiKey(request);
+  // Apply origin validation
+  const authError = validateOrigin(request);
   if (authError) return authError;
 
   // Apply rate limiting
-  const rateLimitError = applyRateLimit(request, RATE_LIMITS.SEND_MESSAGE);
+  const rateLimitError = await checkAndApplyRateLimit(request, RATE_LIMITS.SEND_MESSAGE);
   if (rateLimitError) return rateLimitError;
 
   try {

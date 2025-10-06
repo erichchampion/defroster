@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDataService } from '@/lib/services/data-service-singleton';
 import { validateCronSecret } from '@/lib/middleware/auth';
-import { applyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit';
+import { checkAndApplyRateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit-upstash';
 import { logger } from '@/lib/utils/logger';
 
 const dataService = getDataService();
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   // Apply rate limiting
-  const rateLimitError = applyRateLimit(request, RATE_LIMITS.CLEANUP);
+  const rateLimitError = await checkAndApplyRateLimit(request, RATE_LIMITS.CLEANUP);
   if (rateLimitError) return rateLimitError;
 
   try {

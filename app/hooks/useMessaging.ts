@@ -286,17 +286,18 @@ export function useMessaging() {
       // Update last fetch time for this area
       await localStorageService.setLastFetchTime(geohash, Date.now());
 
-      // If incremental query, merge with existing local messages
+      // ALWAYS merge with local messages to ensure we have the complete picture
+      // (server only keeps 1 day, but local keeps 1 week)
+      const localMessages = await localStorageService.getMessagesInRadius(location, DEFAULT_RADIUS_MILES);
+
       if (isIncrementalQuery) {
-        const localMessages = await localStorageService.getMessagesInRadius(location, DEFAULT_RADIUS_MILES);
-        console.log(`Merged ${serverMessages.length} new + ${localMessages.length} cached = ${localMessages.length} total`);
-        setMessages(localMessages);
-        return localMessages;
+        console.log(`Incremental query: ${serverMessages.length} new messages, ${localMessages.length} total messages`);
       } else {
-        // Initial query, just use server messages
-        setMessages(serverMessages);
-        return serverMessages;
+        console.log(`Initial query: ${serverMessages.length} from server, ${localMessages.length} total messages (including cached)`);
       }
+
+      setMessages(localMessages);
+      return localMessages;
     } catch (err) {
       console.error('Error getting messages from server:', err);
 

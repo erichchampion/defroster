@@ -336,34 +336,73 @@ View the generated documentation by opening `docs/api/index.html` in your browse
 
 ## 🌐 Internationalization (i18n)
 
-Defroster supports multiple languages with automatic browser detection:
+Defroster supports multiple languages with **SEO-friendly, server-side rendered** locale routes:
+
+### URL Structure
+- `/` → Redirects to `/en-us` (default) or `/es-us` (Spanish browsers)
+- `/en-us` → English version (server-rendered, crawlable)
+- `/es-us` → Spanish version (server-rendered, crawlable)
 
 ### Current Languages
-- 🇺🇸 **English** (default)
-- 🇪🇸 **Spanish** (español)
+- 🇺🇸 **English** (default) - `/en-us`
+- 🇪🇸 **Spanish** (español) - `/es-us`
+
+### How It Works
+
+**Middleware** (`middleware.ts`) detects browser language from the `Accept-Language` header and redirects to the appropriate locale. Each locale has:
+- ✅ Server-side rendered metadata (title, description, Open Graph, Twitter cards)
+- ✅ Proper `<html lang="en">` or `<html lang="es">` attributes
+- ✅ Localized content from `lib/i18n/en.json` or `lib/i18n/es.json`
+- ✅ SEO-friendly URLs for better search engine indexing
+
+**Example**:
+```bash
+# English browser → redirects to /en-us
+curl -H "Accept-Language: en-US" https://defroster.us/
+
+# Spanish browser → redirects to /es-us
+curl -H "Accept-Language: es-MX" https://defroster.us/
+```
 
 ### Adding New Languages
 
-1. Create a new translation file (e.g., `lib/i18n/fr.json`)
-2. Copy the structure from `lib/i18n/en.json`
-3. Translate all strings
-4. Add the language to `lib/i18n/i18n.ts`:
-
+1. **Update i18n utilities** (`lib/i18n/i18n.ts`):
 ```typescript
-import fr from './fr.json';
+export type Locale = 'en-us' | 'es-us' | 'fr-us';  // Add new locale
+export const locales: Locale[] = ['en-us', 'es-us', 'fr-us'];
+```
 
-const translations: Record<Language, TranslationKeys> = {
-  en,
-  es,
-  fr, // Add your language
-};
-
-export function getBrowserLanguage(): Language {
-  const browserLang = navigator.language.toLowerCase();
-  if (browserLang.startsWith('es')) return 'es';
-  if (browserLang.startsWith('fr')) return 'fr'; // Add detection
-  return 'en';
+2. **Create translation file** (`lib/i18n/fr.json`):
+```json
+{
+  "app": {
+    "name": "Defroster",
+    "title": "Defroster - Signaler les Observations"
+  }
+  // ... copy structure from en.json and translate
 }
+```
+
+3. **Update middleware** (`middleware.ts`):
+```typescript
+function getLocale(request: NextRequest): string {
+  const acceptLanguage = request.headers.get('accept-language');
+  // ... existing code ...
+
+  for (const lang of languages) {
+    if (lang.code.startsWith('es')) return 'es-us';
+    if (lang.code.startsWith('fr')) return 'fr-us';  // Add detection
+  }
+
+  return 'en-us';
+}
+```
+
+4. **Build and test**:
+```bash
+npm run build
+npm start
+curl -H "Accept-Language: fr-FR" http://localhost:3000/
 ```
 
 ---
@@ -435,6 +474,9 @@ The codebase uses interfaces to allow easy provider switching:
 ```
 defroster/
 ├── app/
+│   ├── [locale]/               # Localized routes (SSR)
+│   │   ├── layout.tsx          # Locale-specific layout with i18n metadata
+│   │   └── page.tsx            # Main app page (client component)
 │   ├── api/                    # API routes (serverless functions)
 │   │   ├── cleanup-messages/   # Cron job for message cleanup
 │   │   ├── get-messages/       # Fetch nearby messages
@@ -448,9 +490,10 @@ defroster/
 │   ├── hooks/                  # Custom React hooks
 │   │   ├── useGeolocation.ts
 │   │   └── useMessaging.ts
-│   ├── layout.tsx              # Root layout with providers
-│   ├── page.tsx                # Main app page
+│   ├── ClientProviders.tsx     # Client-side context providers
+│   ├── layout.tsx              # Root layout (minimal)
 │   └── globals.css             # Global styles
+├── middleware.ts               # Locale detection & redirection
 ├── lib/
 │   ├── abstractions/           # Service interfaces
 │   │   ├── data-service.ts

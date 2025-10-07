@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Language, TranslationKeys, getBrowserLanguage, getTranslations, formatString } from '@/lib/i18n/i18n';
+import { Language, Locale, TranslationKeys, getBrowserLanguage, getTranslations, localeToLanguage, formatString } from '@/lib/i18n/i18n';
 
 interface I18nContextType {
   language: Language;
@@ -12,16 +12,26 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('en');
-  const [translations, setTranslations] = useState<TranslationKeys>(getTranslations('en'));
+export function I18nProvider({
+  children,
+  initialLocale
+}: {
+  children: ReactNode;
+  initialLocale?: Locale;
+}) {
+  // Initialize with the locale from the server if provided, otherwise default to 'en'
+  const initialLanguage = initialLocale ? localeToLanguage(initialLocale) : 'en';
+  const [language, setLanguageState] = useState<Language>(initialLanguage);
+  const [translations, setTranslations] = useState<TranslationKeys>(getTranslations(initialLanguage));
 
-  // Initialize language from browser on mount
+  // Only initialize from browser if no initial locale was provided
   useEffect(() => {
-    const browserLang = getBrowserLanguage();
-    setLanguageState(browserLang);
-    setTranslations(getTranslations(browserLang));
-  }, []);
+    if (!initialLocale) {
+      const browserLang = getBrowserLanguage();
+      setLanguageState(browserLang);
+      setTranslations(getTranslations(browserLang));
+    }
+  }, [initialLocale]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

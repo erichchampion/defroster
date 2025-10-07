@@ -2,6 +2,7 @@ import en from './en.json';
 import es from './es.json';
 
 export type Language = 'en' | 'es';
+export type Locale = 'en-us' | 'es-us';
 
 export type TranslationKeys = typeof en;
 
@@ -30,10 +31,31 @@ export function getBrowserLanguage(): Language {
 }
 
 /**
+ * Convert locale to language code
+ */
+export function localeToLanguage(locale: Locale): Language {
+  return locale.split('-')[0] as Language;
+}
+
+/**
+ * Convert language to locale
+ */
+export function languageToLocale(language: Language): Locale {
+  return `${language}-us` as Locale;
+}
+
+/**
  * Get translations for a specific language
  */
-export function getTranslations(language: Language = getBrowserLanguage()): TranslationKeys {
+export function getTranslations(language: Language = 'en'): TranslationKeys {
   return translations[language] || translations.en;
+}
+
+/**
+ * Get translations for a specific locale
+ */
+export function getTranslationsByLocale(locale: Locale): TranslationKeys {
+  return getTranslations(localeToLanguage(locale));
 }
 
 /**
@@ -64,3 +86,9 @@ export function getValue<T>(obj: T, path: string): string {
 
   return typeof result === 'string' ? result : path;
 }
+
+/**
+ * Supported locales
+ */
+export const locales: Locale[] = ['en-us', 'es-us'];
+export const defaultLocale: Locale = 'en-us';

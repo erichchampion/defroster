@@ -1855,16 +1855,178 @@ useEffect(() => {
 
 ### Architecture
 
-**Strategy**: JSON-based translations with React Context.
+**Strategy**: SEO-friendly, server-side rendered locale routes with JSON-based translations.
 
 **Files**:
 ```
+app/
+├── [locale]/           # Dynamic locale routes
+│   ├── layout.tsx      # Server-rendered layout with i18n metadata
+│   └── page.tsx        # Client component (uses translations)
+├── layout.tsx          # Root layout (minimal)
+└── ClientProviders.tsx # Client context providers
+middleware.ts           # Locale detection & redirection
 lib/i18n/
-├── en.json         # English translations
-├── es.json         # Spanish translations
-├── i18n.ts         # Utilities
-└── I18nContext.tsx # React Context
+├── en.json             # English translations
+├── es.json             # Spanish translations
+├── i18n.ts             # Utilities (locales, types, helpers)
+└── I18nContext.tsx     # React Context (client-side)
 ```
+
+### URL Structure
+
+**Locale-Based Routing**:
+- `/` → **Redirects** to `/en-us` or `/es-us` (based on `Accept-Language` header)
+- `/en-us` → English version (**server-rendered**, crawlable)
+- `/es-us` → Spanish version (**server-rendered**, crawlable)
+
+**SEO Benefits**:
+- ✅ Each locale has its own URL (better for search engines)
+- ✅ Server-rendered metadata (title, description, Open Graph)
+- ✅ Proper `<html lang="en">` or `<html lang="es">` attributes
+- ✅ No client-side language switching (instant, no flicker)
+
+### Middleware (Locale Detection)
+
+**Location**: `middleware.ts`
+
+**Purpose**: Detect browser language and redirect to appropriate locale.
+
+**Implementation**:
+```typescript
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+const locales = ['en-us', 'es-us'];
+const defaultLocale = 'en-us';
+
+function getLocale(request: NextRequest): string {
+  // 1. Check cookie preference
+  const localeCookie = request.cookies.get('NEXT_LOCALE')?.value;
+  if (localeCookie && locales.includes(localeCookie)) {
+    return localeCookie;
+  }
+
+  // 2. Parse Accept-Language header
+  const acceptLanguage = request.headers.get('accept-language');
+  if (acceptLanguage) {
+    const languages = acceptLanguage
+      .split(',')
+      .map(lang => {
+        const [code, q = 'q=1'] = lang.trim().split(';');
+        return { code: code.toLowerCase(), quality: parseFloat(q.split('=')[1] || '1') };
+      })
+      .sort((a, b) => b.quality - a.quality);
+
+    // Check for Spanish
+    for (const lang of languages) {
+      if (lang.code.startsWith('es')) {
+        return 'es-us';
+      }
+    }
+  }
+
+  return defaultLocale;
+}
+
+export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Skip static files and API routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.') ||
+    pathname === '/manifest.json'
+  ) {
+    return NextResponse.next();
+  }
+
+  // Check if locale already in path
+  const pathnameHasLocale = locales.some(
+    locale => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
+  );
+
+  if (pathnameHasLocale) {
+    return NextResponse.next();
+  }
+
+  // Redirect to locale
+  if (pathname === '/') {
+    const locale = getLocale(request);
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}`;
+
+    const response = NextResponse.redirect(url);
+    // Set cookie to remember preference
+    response.cookies.set('NEXT_LOCALE', locale, {
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      path: '/',
+    });
+
+    return response;
+  }
+
+  return NextResponse.next();
+}
+```
+
+### Server-Side Layout (Localized Metadata)
+
+**Location**: `app/[locale]/layout.tsx`
+
+**Purpose**: Generate server-rendered metadata and HTML lang attribute for each locale.
+
+**Implementation**:
+```typescript
+import { locales, localeToLanguage, getTranslationsByLocale, type Locale } from "@/lib/i18n/i18n";
+
+export async function generateStaticParams() {
+  return locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params as { locale: Locale };
+  const translations = getTranslationsByLocale(locale);
+  const language = localeToLanguage(locale);
+
+  return {
+    title: translations.app.title,
+    description: translations.app.description,
+    openGraph: {
+      locale: language === 'es' ? 'es_US' : 'en_US',
+      title: translations.app.title,
+      description: translations.app.description,
+    },
+    // ... more metadata
+  };
+}
+
+export default async function LocaleLayout({ children, params }) {
+  const { locale } = await params as { locale: Locale };
+  const language = localeToLanguage(locale);
+
+  return (
+    <html lang={language}>
+      <body>
+        <ClientProviders initialLocale={locale}>
+          {children}
+        </ClientProviders>
+      </body>
+    </html>
+  );
+}
+```
+
+**Key Features**:
+- ✅ `generateStaticParams()` pre-renders all locale pages at build time
+- ✅ `generateMetadata()` creates SEO-friendly, localized metadata
+- ✅ `<html lang="en">` or `<html lang="es">` for accessibility
+- ✅ `initialLocale` passed to client context (prevents hydration mismatch)
 
 ### Translation Structure
 
@@ -1873,7 +2035,8 @@ lib/i18n/
 {
   "app": {
     "name": "Defroster",
-    "title": "Defroster - Report Sightings"
+    "title": "Defroster - Report Sightings",
+    "description": "Real-time location-based safety alerts"
   },
   "messageForm": {
     "heading": "Report Sighting Type",
@@ -1891,27 +2054,104 @@ lib/i18n/
 }
 ```
 
-### Language Detection
+### I18n Utilities
 
-**Browser Language**:
+**Location**: `lib/i18n/i18n.ts`
+
+**Types**:
 ```typescript
-// lib/i18n/i18n.ts
+export type Language = 'en' | 'es';
+export type Locale = 'en-us' | 'es-us';
+export type TranslationKeys = typeof en;
+
+export const locales: Locale[] = ['en-us', 'es-us'];
+export const defaultLocale: Locale = 'en-us';
+```
+
+**Key Functions**:
+```typescript
+// Convert locale to language
+export function localeToLanguage(locale: Locale): Language {
+  return locale.split('-')[0] as Language;
+}
+
+// Convert language to locale
+export function languageToLocale(language: Language): Locale {
+  return `${language}-us` as Locale;
+}
+
+// Get translations by locale
+export function getTranslationsByLocale(locale: Locale): TranslationKeys {
+  return getTranslations(localeToLanguage(locale));
+}
+
+// Browser language detection (client-side fallback)
 export function getBrowserLanguage(): Language {
   if (typeof window === 'undefined') return 'en';
 
   const browserLang = navigator.language.toLowerCase();
-
   if (browserLang.startsWith('es')) return 'es';
-  // Add more languages here
 
-  return 'en'; // Default
+  return 'en';
+}
+```
+
+### Client Context (React)
+
+**Location**: `lib/contexts/I18nContext.tsx`
+
+**Purpose**: Provide translations to client components (with server-provided initial locale).
+
+**Implementation**:
+```typescript
+export function I18nProvider({
+  children,
+  initialLocale
+}: {
+  children: ReactNode;
+  initialLocale?: Locale;
+}) {
+  // Initialize with server-provided locale
+  const initialLanguage = initialLocale ? localeToLanguage(initialLocale) : 'en';
+  const [language, setLanguageState] = useState<Language>(initialLanguage);
+  const [translations, setTranslations] = useState<TranslationKeys>(getTranslations(initialLanguage));
+
+  // Only use browser detection if no initial locale provided
+  useEffect(() => {
+    if (!initialLocale) {
+      const browserLang = getBrowserLanguage();
+      setLanguageState(browserLang);
+      setTranslations(getTranslations(browserLang));
+    }
+  }, [initialLocale]);
+
+  // ... rest of context
 }
 ```
 
 ### Usage in Components
 
-**With Context**:
+**Server Components** (metadata, layouts):
 ```typescript
+// app/[locale]/layout.tsx
+import { getTranslationsByLocale } from '@/lib/i18n/i18n';
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+  const translations = getTranslationsByLocale(locale);
+
+  return {
+    title: translations.app.title,
+    description: translations.app.description,
+  };
+}
+```
+
+**Client Components** (interactive):
+```typescript
+// app/[locale]/page.tsx or components
+'use client';
+
 import { useI18n } from '@/lib/contexts/I18nContext';
 
 function MyComponent() {
@@ -1929,29 +2169,85 @@ function MyComponent() {
 const { t, formatString } = useI18n();
 
 const text = formatString(t.time.minutesAgo, { count: 5 });
-// Result: "5 minutes ago"
+// Result: "5 minutes ago" or "hace 5 minutos"
 ```
 
 ### Adding New Languages
 
-1. Create `lib/i18n/fr.json` (copy structure from `en.json`)
-2. Translate all strings
-3. Add to `i18n.ts`:
+1. **Update types and locales** (`lib/i18n/i18n.ts`):
+```typescript
+export type Language = 'en' | 'es' | 'fr';
+export type Locale = 'en-us' | 'es-us' | 'fr-us';
+
+export const locales: Locale[] = ['en-us', 'es-us', 'fr-us'];
+```
+
+2. **Create translation file** (`lib/i18n/fr.json`):
+```json
+{
+  "app": {
+    "name": "Defroster",
+    "title": "Defroster - Signaler les Observations"
+  }
+  // ... copy structure from en.json and translate
+}
+```
+
+3. **Import in i18n.ts**:
 ```typescript
 import fr from './fr.json';
 
 const translations: Record<Language, TranslationKeys> = {
   en,
   es,
-  fr  // Add here
+  fr,  // Add here
 };
+```
 
-export function getBrowserLanguage(): Language {
-  const browserLang = navigator.language.toLowerCase();
-  if (browserLang.startsWith('es')) return 'es';
-  if (browserLang.startsWith('fr')) return 'fr';  // Add detection
-  return 'en';
+4. **Update middleware** (`middleware.ts`):
+```typescript
+const locales = ['en-us', 'es-us', 'fr-us'];  // Add locale
+
+function getLocale(request: NextRequest): string {
+  // ... existing code ...
+
+  for (const lang of languages) {
+    if (lang.code.startsWith('es')) return 'es-us';
+    if (lang.code.startsWith('fr')) return 'fr-us';  // Add detection
+  }
+
+  return 'en-us';
 }
+```
+
+5. **Build and test**:
+```bash
+npm run build
+npm start
+
+# Test redirect
+curl -I -H "Accept-Language: fr-FR" http://localhost:3000/
+# Should redirect to /fr-us
+```
+
+### SEO Verification
+
+**Check Server-Rendered HTML**:
+```bash
+# English
+curl -s http://localhost:3000/en-us | grep '<html'
+# Output: <html lang="en">
+
+# Spanish
+curl -s http://localhost:3000/es-us | grep '<html'
+# Output: <html lang="es">
+
+# Check metadata
+curl -s http://localhost:3000/en-us | grep '<title>'
+# Output: <title>Defroster - Report Sightings</title>
+
+curl -s http://localhost:3000/es-us | grep '<title>'
+# Output: <title>Defroster - Reportar Avistamientos</title>
 ```
 
 ---
@@ -2310,12 +2606,22 @@ For questions or contributions, see the main [README.md](../README.md).
 
 ---
 
-**Last Updated**: 2025-10-05
-**Version**: 0.3.1
+**Last Updated**: 2025-10-07
+**Version**: 0.4.0
 
 ---
 
 ## Changelog
+
+### v0.4.0 (2025-10-07)
+**Feature**: SEO-friendly i18n with server-side rendering
+- Implemented locale-based routing (`/en-us`, `/es-us`)
+- Added middleware for browser language detection and redirects
+- Server-rendered metadata with localized titles, descriptions, Open Graph tags
+- Proper `<html lang="en">` and `<html lang="es">` attributes for accessibility
+- Cookie-based locale preference persistence
+- Static generation of all locale pages at build time
+- Fully crawlable by search engines
 
 ### v0.3.1 (2025-10-05)
 **Bug Fix**: Data merging logic in `useMessaging.ts`

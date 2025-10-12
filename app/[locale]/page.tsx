@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 import LocationPermission from '@/app/components/LocationPermission';
 import MessageForm from '@/app/components/MessageForm';
 import MessageList from '@/app/components/MessageList';
+import ImmigrationGuide from '@/app/components/ImmigrationGuide';
 import { GeoLocation } from '@/lib/types/message';
 import { registerServiceWorker } from '@/lib/utils/register-sw';
 import { useI18n } from '@/lib/contexts/I18nContext';
@@ -365,6 +366,11 @@ export default function Home() {
               {t.main.knowYourRights.url}
             </a>
           </p>
+        </div>
+
+        {/* Immigration Rights & Protection Guide */}
+        <div className="mt-6">
+          <ImmigrationGuide />
         </div>
       </div>
     </div>

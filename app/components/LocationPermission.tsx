@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/lib/contexts/I18nContext';
+import ImmigrationGuide from './ImmigrationGuide';
 
 interface LocationPermissionProps {
   onRequestPermission: () => Promise<{ latitude: number; longitude: number } | null>;
@@ -156,6 +157,9 @@ export default function LocationPermission({ onRequestPermission }: LocationPerm
             </p>
           </div>
         </div>
+
+        {/* Immigration Rights & Protection Guide */}
+        <ImmigrationGuide />
       </div>
     </div>
   );

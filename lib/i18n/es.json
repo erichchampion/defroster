@@ -30,6 +30,97 @@
       "description": "cuando el Servicio de Inmigración y Control de Aduanas (ICE) está en la puerta:",
       "url": "https://www.aclusocal.org/icenotwelcome"
     },
+    "immigrationGuide": {
+      "heading": "Guía de Derechos y Protección de Inmigración",
+      "stoppedByICE": {
+        "heading": "Si lo Detiene ICE",
+        "knowYourRightsHeading": "Conozca sus derechos:",
+        "rights": [
+          "Tiene el derecho de permanecer en silencio—úselo",
+          "No hable sin un abogado presente",
+          "Nunca mienta ni proporcione documentos falsos (ICE puede mentirle; usted no puede mentirles)",
+          "Memorice: su número A, el teléfono de su abogado, contacto familiar"
+        ],
+        "warrantsHeading": "Las órdenes importan:",
+        "warrants": [
+          "**Orden judicial** (firmada por un juez) = debe cumplir",
+          "**Detención de ICE** (documento propio de ICE) = no es legalmente vinculante, puede rechazarla",
+          "ICE no puede entrar a su hogar sin una orden judicial",
+          "Pida ver la orden. Si no la tienen, puede rechazarlos"
+        ],
+        "ifArrestedHeading": "Si lo arrestan:",
+        "arrested": [
+          "Solicite un abogado inmediatamente",
+          "Si no puede pagar uno, solicite un defensor público",
+          "No hable con las autoridades sin representación legal"
+        ]
+      },
+      "schoolSafety": {
+        "heading": "Seguridad Escolar",
+        "description": "Contacte a su junta de educación local y sindicato de maestros para:",
+        "actions": [
+          "Entender sus políticas de protección",
+          "Preguntar cómo puede apoyar (todos los padres, no solo familias inmigrantes)"
+        ]
+      },
+      "localPolice": {
+        "heading": "Policía Local y Acuerdos 287(g)",
+        "warning": "**Advertencia:** Muchas jurisdicciones tienen acuerdos 287(g) que requieren que la policía local trabaje con ICE. Llamar a la policía local puede resultar en la participación de ICE.",
+        "whatIs287g": "**¿Qué es 287(g)?** Acuerdos federales que obligan a la policía local a hacer cumplir la ley de inmigración. Actualmente activos en más de 1,000 agencias en casi todos los estados. Solo seis estados los han prohibido: Washington, Oregon, California, Illinois, Nueva Jersey y Connecticut."
+      },
+      "howCitizensCanHelp": {
+        "heading": "Cómo Pueden Ayudar los Ciudadanos",
+        "getInvolvedHeading": "1. Involúcrese Localmente",
+        "getInvolved": [
+          "Asista a reuniones de la junta escolar, concejo municipal y asambleas públicas",
+          "Únase a organizaciones locales de derechos de inmigrantes"
+        ],
+        "contactCongressHeading": "2. Contacte al Congreso",
+        "contactCongress": [
+          "Llame a sus {representativesLink} regularmente",
+          "Abogue por una política de inmigración humana y el debido proceso"
+        ],
+        "representativesText": "representantes",
+        "representativesUrl": "https://www.congress.gov/members/find-your-member",
+        "supportOrgsHeading": "3. Apoye Organizaciones",
+        "supportOrgs": [
+          "Voluntariado (bancos telefónicos, tocar puertas, peticiones)",
+          "Done a grupos locales de derechos de inmigrantes"
+        ],
+        "stayInformedHeading": "4. Manténgase Informado",
+        "stayInformed": [
+          "Siga medios de investigación sin fines de lucro (ProPublica, The Appeal)",
+          "Comparta información con su comunidad"
+        ],
+        "organizeHeading": "5. Organícese y Movilícese",
+        "organize": [
+          "Traiga amigos a reuniones y acciones",
+          "Construya redes comunitarias"
+        ],
+        "sanctuaryHeading": "6. Lugares de Santuario",
+        "sanctuary": [
+          "Más de 800 lugares de culto ofrecen refugio y apoyo",
+          "Nota: Estos no tienen protección legal especial contra órdenes",
+          "Contacte uno si necesita asistencia inmediata"
+        ],
+        "repeal287gHeading": "7. Revoque Acuerdos 287(g)",
+        "repeal287g": [
+          "Estos son acuerdos LOCALES que requieren aprobación LOCAL",
+          "Contacte a su concejo municipal, alcalde y jefe de policía para exigir revocación",
+          "Asista a reuniones del concejo municipal",
+          "Incluso sin 287(g), abogue por ordenanzas de protección de inmigrantes"
+        ]
+      },
+      "legalHelp": {
+        "heading": "¿Necesita Ayuda Legal?",
+        "tips": [
+          "Contacte a un abogado de inmigración antes de una emergencia",
+          "Sea completamente transparente sobre su estatus—el privilegio abogado-cliente lo protege",
+          "La mayoría de las firmas ofrecen servicios multilingües"
+        ]
+      },
+      "keyTakeaway": "**Conclusión clave:** Conozca sus derechos, obtenga ayuda legal y participe localmente. El cambio ocurre a nivel comunitario."
+    },
     "story": {
       "paragraph1": "En las primeras horas del 2 de octubre, un edificio de apartamentos en South Shore Drive en Chicago fue destrozado por una redada federal. Agentes de Border Patrol, el FBI y la ATF irrumpieron en el complejo de cinco pisos con helicópteros, vehículos blindados y granadas aturdidoras. Las familias fueron sacadas de sus hogares, esposadas con bridas en la calle—algunas sin ropa—y dejadas afuera durante horas. Al amanecer, todos menos 37 fueron liberados, pero los residentes regresaron a apartamentos destrozados y una comunidad profundamente conmocionada.",
       "paragraph2": "Incidentes como este resaltan la necesidad urgente de herramientas que protejan e informen. {appName} es una aplicación anónima y de {openSourceLink} que permite a los usuarios reportar actividad de Immigration and Customs Enforcement (ICE) con solo tocar su pantalla. La plataforma nunca almacena datos personales, elimina automáticamente los reportes del servidor después de un día y alerta a comunidades dentro de un radio de cinco millas. Con Defroster, las personas pueden mantenerse seguras, informadas y conectadas, mientras permanecen completamente anónimas.",
@@ -54,6 +145,97 @@
       "heading": "CONOZCA SUS DERECHOS",
       "description": "cuando el Servicio de Inmigración y Control de Aduanas (ICE) está en la puerta:",
       "url": "https://www.aclusocal.org/icenotwelcome"
+    },
+    "immigrationGuide": {
+      "heading": "Guía de Derechos y Protección de Inmigración",
+      "stoppedByICE": {
+        "heading": "Si lo Detiene ICE",
+        "knowYourRightsHeading": "Conozca sus derechos:",
+        "rights": [
+          "Tiene el derecho de permanecer en silencio—úselo",
+          "No hable sin un abogado presente",
+          "Nunca mienta ni proporcione documentos falsos (ICE puede mentirle; usted no puede mentirles)",
+          "Memorice: su número A, el teléfono de su abogado, contacto familiar"
+        ],
+        "warrantsHeading": "Las órdenes importan:",
+        "warrants": [
+          "**Orden judicial** (firmada por un juez) = debe cumplir",
+          "**Detención de ICE** (documento propio de ICE) = no es legalmente vinculante, puede rechazarla",
+          "ICE no puede entrar a su hogar sin una orden judicial",
+          "Pida ver la orden. Si no la tienen, puede rechazarlos"
+        ],
+        "ifArrestedHeading": "Si lo arrestan:",
+        "arrested": [
+          "Solicite un abogado inmediatamente",
+          "Si no puede pagar uno, solicite un defensor público",
+          "No hable con las autoridades sin representación legal"
+        ]
+      },
+      "schoolSafety": {
+        "heading": "Seguridad Escolar",
+        "description": "Contacte a su junta de educación local y sindicato de maestros para:",
+        "actions": [
+          "Entender sus políticas de protección",
+          "Preguntar cómo puede apoyar (todos los padres, no solo familias inmigrantes)"
+        ]
+      },
+      "localPolice": {
+        "heading": "Policía Local y Acuerdos 287(g)",
+        "warning": "**Advertencia:** Muchas jurisdicciones tienen acuerdos 287(g) que requieren que la policía local trabaje con ICE. Llamar a la policía local puede resultar en la participación de ICE.",
+        "whatIs287g": "**¿Qué es 287(g)?** Acuerdos federales que obligan a la policía local a hacer cumplir la ley de inmigración. Actualmente activos en más de 1,000 agencias en casi todos los estados. Solo seis estados los han prohibido: Washington, Oregon, California, Illinois, Nueva Jersey y Connecticut."
+      },
+      "howCitizensCanHelp": {
+        "heading": "Cómo Pueden Ayudar los Ciudadanos",
+        "getInvolvedHeading": "1. Involúcrese Localmente",
+        "getInvolved": [
+          "Asista a reuniones de la junta escolar, concejo municipal y asambleas públicas",
+          "Únase a organizaciones locales de derechos de inmigrantes"
+        ],
+        "contactCongressHeading": "2. Contacte al Congreso",
+        "contactCongress": [
+          "Llame a sus {representativesLink} regularmente",
+          "Abogue por una política de inmigración humana y el debido proceso"
+        ],
+        "representativesText": "representantes",
+        "representativesUrl": "https://www.congress.gov/members/find-your-member",
+        "supportOrgsHeading": "3. Apoye Organizaciones",
+        "supportOrgs": [
+          "Voluntariado (bancos telefónicos, tocar puertas, peticiones)",
+          "Done a grupos locales de derechos de inmigrantes"
+        ],
+        "stayInformedHeading": "4. Manténgase Informado",
+        "stayInformed": [
+          "Siga medios de investigación sin fines de lucro (ProPublica, The Appeal)",
+          "Comparta información con su comunidad"
+        ],
+        "organizeHeading": "5. Organícese y Movilícese",
+        "organize": [
+          "Traiga amigos a reuniones y acciones",
+          "Construya redes comunitarias"
+        ],
+        "sanctuaryHeading": "6. Lugares de Santuario",
+        "sanctuary": [
+          "Más de 800 lugares de culto ofrecen refugio y apoyo",
+          "Nota: Estos no tienen protección legal especial contra órdenes",
+          "Contacte uno si necesita asistencia inmediata"
+        ],
+        "repeal287gHeading": "7. Revoque Acuerdos 287(g)",
+        "repeal287g": [
+          "Estos son acuerdos LOCALES que requieren aprobación LOCAL",
+          "Contacte a su concejo municipal, alcalde y jefe de policía para exigir revocación",
+          "Asista a reuniones del concejo municipal",
+          "Incluso sin 287(g), abogue por ordenanzas de protección de inmigrantes"
+        ]
+      },
+      "legalHelp": {
+        "heading": "¿Necesita Ayuda Legal?",
+        "tips": [
+          "Contacte a un abogado de inmigración antes de una emergencia",
+          "Sea completamente transparente sobre su estatus—el privilegio abogado-cliente lo protege",
+          "La mayoría de las firmas ofrecen servicios multilingües"
+        ]
+      },
+      "keyTakeaway": "**Conclusión clave:** Conozca sus derechos, obtenga ayuda legal y participe localmente. El cambio ocurre a nivel comunitario."
     }
   },
   "messageForm": {

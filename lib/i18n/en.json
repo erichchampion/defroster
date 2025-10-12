@@ -30,6 +30,97 @@
       "description": "when U.S. Immigration and Customs Enforcement (ICE) is at the door:",
       "url": "https://www.aclusocal.org/icenotwelcome"
     },
+    "immigrationGuide": {
+      "heading": "Immigration Rights & Protection Guide",
+      "stoppedByICE": {
+        "heading": "If Stopped by ICE",
+        "knowYourRightsHeading": "Know your rights:",
+        "rights": [
+          "You have the right to remain silent—use it",
+          "Do not speak without a lawyer present",
+          "Never lie or provide false documents (ICE can lie to you; you cannot lie to them)",
+          "Memorize: your A number, lawyer's phone number, family contact"
+        ],
+        "warrantsHeading": "Warrants matter:",
+        "warrants": [
+          "**Judicial warrant** (signed by a judge) = you must comply",
+          "**ICE detainer** (ICE's own document) = not legally binding, you can refuse",
+          "ICE cannot enter your home without a judicial warrant",
+          "Ask to see the warrant. If they don't have one, you can turn them away"
+        ],
+        "ifArrestedHeading": "If arrested:",
+        "arrested": [
+          "Request a lawyer immediately",
+          "If you can't afford one, request a public defender",
+          "Do not speak to law enforcement without legal representation"
+        ]
+      },
+      "schoolSafety": {
+        "heading": "School Safety",
+        "description": "Contact your local board of education and teacher's union to:",
+        "actions": [
+          "Understand their protection policies",
+          "Ask how you can support (all parents, not just immigrant families)"
+        ]
+      },
+      "localPolice": {
+        "heading": "Local Police & 287(g) Agreements",
+        "warning": "**Warning:** Many jurisdictions have 287(g) agreements requiring local police to work with ICE. Calling local police may result in ICE involvement.",
+        "whatIs287g": "**What is 287(g)?** Federal agreements forcing local police to enforce immigration law. Currently active in 1,000+ agencies across nearly all states. Only six states have banned them: Washington, Oregon, California, Illinois, New Jersey, and Connecticut."
+      },
+      "howCitizensCanHelp": {
+        "heading": "How Citizens Can Help",
+        "getInvolvedHeading": "1. Get Involved Locally",
+        "getInvolved": [
+          "Attend school board, city council, and town hall meetings",
+          "Join local immigrant rights organizations"
+        ],
+        "contactCongressHeading": "2. Contact Congress",
+        "contactCongress": [
+          "Call your {representativesLink} regularly",
+          "Advocate for humane immigration policy and due process"
+        ],
+        "representativesText": "representatives",
+        "representativesUrl": "https://www.congress.gov/members/find-your-member",
+        "supportOrgsHeading": "3. Support Organizations",
+        "supportOrgs": [
+          "Volunteer time (phone banks, door knocking, petitions)",
+          "Donate to local immigration rights groups"
+        ],
+        "stayInformedHeading": "4. Stay Informed",
+        "stayInformed": [
+          "Follow non-profit investigative media (ProPublica, The Appeal)",
+          "Share information with your community"
+        ],
+        "organizeHeading": "5. Organize & Mobilize",
+        "organize": [
+          "Bring friends to meetings and actions",
+          "Build community networks"
+        ],
+        "sanctuaryHeading": "6. Sanctuary Locations",
+        "sanctuary": [
+          "800+ houses of worship offer shelter and support",
+          "Note: These have no special legal protection from warrants",
+          "Contact one if you need immediate assistance"
+        ],
+        "repeal287gHeading": "7. Repeal 287(g) Agreements",
+        "repeal287g": [
+          "These are LOCAL agreements requiring LOCAL approval",
+          "Contact your city council, mayor, and police chief to demand repeal",
+          "Show up to city council meetings",
+          "Even without 287(g), advocate for immigrant protection ordinances"
+        ]
+      },
+      "legalHelp": {
+        "heading": "Need Legal Help?",
+        "tips": [
+          "Contact an immigration lawyer before an emergency",
+          "Be fully transparent about your status—attorney-client privilege protects you",
+          "Most firms offer multilingual services"
+        ]
+      },
+      "keyTakeaway": "**Key takeaway:** Know your rights, get legal help, and engage locally. Change happens at the community level."
+    },
     "story": {
       "paragraph1": "In the early hours of October 2, a South Shore Drive apartment building in Chicago was torn apart by a federal raid. Agents from Border Patrol, the FBI, and the ATF stormed the five-story complex with helicopters, armored vehicles, and flash-bang grenades. Families were forced from their homes, zip-tied in the street—some unclothed—and left outside for hours. By sunrise, all but 37 were released, but residents returned to apartments trashed and a community deeply shaken.",
       "paragraph2": "Incidents like this highlight the urgent need for tools that protect and inform. {appName} is an anonymous, {openSourceLink} app that lets users report Immigration and Customs Enforcement (ICE) activity with just a tap on their screen. The platform never stores personal data, automatically deletes reports from the server after one day, and alerts communities within a five-mile radius. With Defroster, people can stay safe, informed, and connected—while remaining fully anonymous.",
@@ -54,6 +145,97 @@
       "heading": "KNOW YOUR RIGHTS",
       "description": "when U.S. Immigration and Customs Enforcement (ICE) is at the door:",
       "url": "https://www.aclusocal.org/icenotwelcome"
+    },
+    "immigrationGuide": {
+      "heading": "Immigration Rights & Protection Guide",
+      "stoppedByICE": {
+        "heading": "If Stopped by ICE",
+        "knowYourRightsHeading": "Know your rights:",
+        "rights": [
+          "You have the right to remain silent—use it",
+          "Do not speak without a lawyer present",
+          "Never lie or provide false documents (ICE can lie to you; you cannot lie to them)",
+          "Memorize: your A number, lawyer's phone number, family contact"
+        ],
+        "warrantsHeading": "Warrants matter:",
+        "warrants": [
+          "**Judicial warrant** (signed by a judge) = you must comply",
+          "**ICE detainer** (ICE's own document) = not legally binding, you can refuse",
+          "ICE cannot enter your home without a judicial warrant",
+          "Ask to see the warrant. If they don't have one, you can turn them away"
+        ],
+        "ifArrestedHeading": "If arrested:",
+        "arrested": [
+          "Request a lawyer immediately",
+          "If you can't afford one, request a public defender",
+          "Do not speak to law enforcement without legal representation"
+        ]
+      },
+      "schoolSafety": {
+        "heading": "School Safety",
+        "description": "Contact your local board of education and teacher's union to:",
+        "actions": [
+          "Understand their protection policies",
+          "Ask how you can support (all parents, not just immigrant families)"
+        ]
+      },
+      "localPolice": {
+        "heading": "Local Police & 287(g) Agreements",
+        "warning": "**Warning:** Many jurisdictions have 287(g) agreements requiring local police to work with ICE. Calling local police may result in ICE involvement.",
+        "whatIs287g": "**What is 287(g)?** Federal agreements forcing local police to enforce immigration law. Currently active in 1,000+ agencies across nearly all states. Only six states have banned them: Washington, Oregon, California, Illinois, New Jersey, and Connecticut."
+      },
+      "howCitizensCanHelp": {
+        "heading": "How Citizens Can Help",
+        "getInvolvedHeading": "1. Get Involved Locally",
+        "getInvolved": [
+          "Attend school board, city council, and town hall meetings",
+          "Join local immigrant rights organizations"
+        ],
+        "contactCongressHeading": "2. Contact Congress",
+        "contactCongress": [
+          "Call your {representativesLink} regularly",
+          "Advocate for humane immigration policy and due process"
+        ],
+        "representativesText": "representatives",
+        "representativesUrl": "https://www.congress.gov/members/find-your-member",
+        "supportOrgsHeading": "3. Support Organizations",
+        "supportOrgs": [
+          "Volunteer time (phone banks, door knocking, petitions)",
+          "Donate to local immigration rights groups"
+        ],
+        "stayInformedHeading": "4. Stay Informed",
+        "stayInformed": [
+          "Follow non-profit investigative media (ProPublica, The Appeal)",
+          "Share information with your community"
+        ],
+        "organizeHeading": "5. Organize & Mobilize",
+        "organize": [
+          "Bring friends to meetings and actions",
+          "Build community networks"
+        ],
+        "sanctuaryHeading": "6. Sanctuary Locations",
+        "sanctuary": [
+          "800+ houses of worship offer shelter and support",
+          "Note: These have no special legal protection from warrants",
+          "Contact one if you need immediate assistance"
+        ],
+        "repeal287gHeading": "7. Repeal 287(g) Agreements",
+        "repeal287g": [
+          "These are LOCAL agreements requiring LOCAL approval",
+          "Contact your city council, mayor, and police chief to demand repeal",
+          "Show up to city council meetings",
+          "Even without 287(g), advocate for immigrant protection ordinances"
+        ]
+      },
+      "legalHelp": {
+        "heading": "Need Legal Help?",
+        "tips": [
+          "Contact an immigration lawyer before an emergency",
+          "Be fully transparent about your status—attorney-client privilege protects you",
+          "Most firms offer multilingual services"
+        ]
+      },
+      "keyTakeaway": "**Key takeaway:** Know your rights, get legal help, and engage locally. Change happens at the community level."
     }
   },
   "messageForm": {

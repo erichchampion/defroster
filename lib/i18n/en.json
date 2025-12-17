@@ -242,7 +242,7 @@
     "heading": "Report Sighting Type",
     "sightingTypes": {
       "ice": "ICE (Immigration and Customs Enforcement)",
-      "army": "Army",
+      "army": "Army or National Guard",
       "police": "Police"
     },
     "currentLocationLabel": "Your current location",

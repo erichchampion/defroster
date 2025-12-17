@@ -242,7 +242,7 @@
     "heading": "Reportar Tipo de Avistamiento",
     "sightingTypes": {
       "ice": "ICE (Immigration and Customs Enforcement)",
-      "army": "Ejército",
+      "army": "Ejército o Guardia Nacional",
       "police": "Policía"
     },
     "currentLocationLabel": "Tu ubicación actual",

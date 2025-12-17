@@ -40,7 +40,7 @@ describe('MessageForm', () => {
         />
       );
 
-      const armyRadio = screen.getByRole('radio', { name: /^Army$/i });
+      const armyRadio = screen.getByRole('radio', { name: /Army or National Guard/i });
       fireEvent.click(armyRadio);
 
       expect((armyRadio as HTMLInputElement).checked).toBe(true);
@@ -86,7 +86,7 @@ describe('MessageForm', () => {
         />
       );
 
-      const armyRadio = screen.getByRole('radio', { name: /^Army$/i });
+      const armyRadio = screen.getByRole('radio', { name: /Army or National Guard/i });
       fireEvent.click(armyRadio);
 
       const submitButton = screen.getByRole('button', { name: /report sighting/i });

@@ -119,7 +119,10 @@
           "La mayoría de las firmas ofrecen servicios multilingües"
         ]
       },
-      "keyTakeaway": "**Conclusión clave:** Conozca sus derechos, obtenga ayuda legal y participe localmente. El cambio ocurre a nivel comunitario."
+      "keyTakeaway": "**Conclusión clave:** Conozca sus derechos, obtenga ayuda legal y participe localmente. El cambio ocurre a nivel comunitario.",
+      "warrantExamples": {
+        "text": "Ejemplos de una orden judicial y una orden administrativa. ICE no puede entrar a su hogar con solo una orden administrativa."
+      }
     },
     "story": {
       "paragraph1": "En las primeras horas del 2 de octubre, un edificio de apartamentos en South Shore Drive en Chicago fue destrozado por una redada federal. Agentes de Border Patrol, el FBI y la ATF irrumpieron en el complejo de cinco pisos con helicópteros, vehículos blindados y granadas aturdidoras. Las familias fueron sacadas de sus hogares, esposadas con bridas en la calle—algunas sin ropa—y dejadas afuera durante horas. Al amanecer, todos menos 37 fueron liberados, pero los residentes regresaron a apartamentos destrozados y una comunidad profundamente conmocionada.",
@@ -235,7 +238,10 @@
           "La mayoría de las firmas ofrecen servicios multilingües"
         ]
       },
-      "keyTakeaway": "**Conclusión clave:** Conozca sus derechos, obtenga ayuda legal y participe localmente. El cambio ocurre a nivel comunitario."
+      "keyTakeaway": "**Conclusión clave:** Conozca sus derechos, obtenga ayuda legal y participe localmente. El cambio ocurre a nivel comunitario.",
+      "warrantExamples": {
+        "text": "Ejemplos de una orden judicial y una orden administrativa. ICE no puede entrar a su hogar con solo una orden administrativa."
+      }
     }
   },
   "messageForm": {

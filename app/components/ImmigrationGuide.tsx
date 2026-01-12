@@ -207,6 +207,18 @@ export default function ImmigrationGuide() {
       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
         <p className="text-sm text-gray-700">{renderBoldText(guide.keyTakeaway)}</p>
       </div>
+
+      {/* Warrant Examples */}
+      {guide.warrantExamples && (
+        <div className="mt-6">
+          <p className="text-gray-700 mb-4">{guide.warrantExamples.text}</p>
+          <img 
+            src="/warrants.jpg" 
+            alt="Examples of judicial and administrative warrants" 
+            className="w-full max-w-2xl rounded-lg shadow-md"
+          />
+        </div>
+      )}
     </div>
   );
 }

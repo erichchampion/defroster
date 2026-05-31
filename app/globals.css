@@ -435,7 +435,7 @@ button { font-family: inherit; }
 
 .app-grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: var(--s6); align-items: start; }
 .map-card { padding: 10px; overflow: hidden; }
-.leaflet-host { height: clamp(380px, 56vh, 560px); width: 100%; border-radius: var(--r-md); overflow: hidden; background: var(--paper-2); }
+.leaflet-host { height: clamp(380px, 56vh, 560px); width: 100%; border-radius: var(--r-md); overflow: hidden; background: var(--paper-2); position: relative; z-index: 0; isolation: isolate; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; padding: 0 6px; }
 .legend-item { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: calc(var(--t-sm) * var(--text-scale)); color: var(--ink-2); }
 .legend-dot { width: 13px; height: 13px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--sig); border: 2px solid #fff; box-shadow: var(--shadow-xs); }

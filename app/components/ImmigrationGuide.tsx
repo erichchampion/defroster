@@ -62,10 +62,12 @@ export default function ImmigrationGuide({ onBack }: ImmigrationGuideProps) {
       {/* Header */}
       <header className="g-hero">
         <div className="wrap read">
-          {onBack && (
-            <button className="back-btn" onClick={onBack}><ArrowLeft size={20} /> {t.nav.app}</button>
-          )}
-          <span className="eyebrow" style={{ color: 'var(--ember-600)' }}>Defroster · {t.nav.guide}</span>
+          <div className="g-breadcrumb">
+            {onBack && (
+              <button className="back-btn" onClick={onBack}><ArrowLeft size={20} /> {t.nav.app}</button>
+            )}
+            <span className="eyebrow" style={{ color: 'var(--ember-600)' }}>Defroster · {t.nav.guide}</span>
+          </div>
           <h1 className="g-title">{g.title}</h1>
           <p className="g-sub">{g.sub}</p>
           <a className="g-rights-link" href={g.rightsUrl} target="_blank" rel="noopener noreferrer">

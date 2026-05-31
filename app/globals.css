@@ -516,7 +516,9 @@ button { font-family: inherit; }
    ============================================================ */
 .guide { padding-bottom: var(--s10); }
 .g-hero { padding: clamp(28px, 4vw, 52px) 0 var(--s6); background: linear-gradient(180deg, var(--accent-tint), transparent); }
-.back-btn { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-family: var(--font-sans); font-weight: 700; color: var(--accent-600); padding: 8px 6px 8px 0; margin-bottom: 12px; }
+.g-breadcrumb { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.back-btn { display: inline-flex; align-items: baseline; gap: 6px; background: none; border: none; cursor: pointer; font-family: var(--font-sans); font-weight: 700; color: var(--accent-600); padding: 8px 6px 8px 0; }
+.back-btn svg { align-self: center; }
 .back-btn:hover { text-decoration: underline; }
 .g-title { font-size: var(--t-h1); font-weight: 800; letter-spacing: -0.025em; margin: 8px 0 14px; }
 .g-sub { color: var(--ink-2); font-size: calc(var(--t-lg) * var(--text-scale)); line-height: 1.5; max-width: 36em; }

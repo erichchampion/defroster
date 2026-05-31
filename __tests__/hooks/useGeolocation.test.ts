@@ -170,8 +170,8 @@ describe('useGeolocation', () => {
     });
 
     it('should set loading state during request', async () => {
-      let resolvePosition: (pos: any) => void;
-      const positionPromise = new Promise((resolve) => {
+      let resolvePosition: (pos: GeolocationPosition) => void;
+      const positionPromise = new Promise<GeolocationPosition>((resolve) => {
         resolvePosition = resolve;
       });
 
@@ -181,7 +181,7 @@ describe('useGeolocation', () => {
 
       const { result } = renderHook(() => useGeolocation());
 
-      let requestPromise: Promise<any>;
+      let requestPromise: ReturnType<typeof result.current.requestPermission>;
       act(() => {
         requestPromise = result.current.requestPermission();
       });
@@ -195,7 +195,7 @@ describe('useGeolocation', () => {
       await act(async () => {
         resolvePosition!({
           coords: { latitude: 37.7749, longitude: -122.4194 },
-        });
+        } as GeolocationPosition);
         await requestPromise;
       });
 
@@ -250,7 +250,7 @@ describe('useGeolocation', () => {
 
   describe('Edge Cases', () => {
     it('should handle geolocation not supported', async () => {
-      // @ts-ignore
+      // @ts-expect-error Intentionally removing geolocation to test unsupported browsers
       global.navigator.geolocation = undefined;
 
       const { result } = renderHook(() => useGeolocation());
@@ -263,9 +263,7 @@ describe('useGeolocation', () => {
     });
 
     it('should handle multiple concurrent permission requests', async () => {
-      let callCount = 0;
       mockGeolocation.getCurrentPosition.mockImplementation((success) => {
-        callCount++;
         setTimeout(() => {
           success({
             coords: { latitude: 37.7749, longitude: -122.4194 },

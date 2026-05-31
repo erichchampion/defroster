@@ -2,7 +2,6 @@ import { FirestoreDataService } from '@/lib/services/firestore-data-service';
 import {
   collection,
   addDoc,
-  query,
   where,
   getDocs,
   deleteDoc,
@@ -24,7 +23,6 @@ describe('FirestoreDataService', () => {
   let service: FirestoreDataService;
   let mockCollection: jest.Mock;
   let mockAddDoc: jest.Mock;
-  let mockQuery: jest.Mock;
   let mockWhere: jest.Mock;
   let mockGetDocs: jest.Mock;
   let mockDeleteDoc: jest.Mock;
@@ -38,7 +36,6 @@ describe('FirestoreDataService', () => {
 
     mockCollection = collection as jest.Mock;
     mockAddDoc = addDoc as jest.Mock;
-    mockQuery = query as jest.Mock;
     mockWhere = where as jest.Mock;
     mockGetDocs = getDocs as jest.Mock;
     mockDeleteDoc = deleteDoc as jest.Mock;

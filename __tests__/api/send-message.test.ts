@@ -52,12 +52,10 @@ jest.mock('next/server', () => ({
 }));
 
 import { POST } from '@/app/api/send-message/route';
-import { adminMessaging } from '@/lib/firebase/admin';
-import { NextResponse } from 'next/server';
 import { resetDataService } from '@/lib/services/data-service-singleton';
 
 // Helper to create mock NextRequest
-function createMockRequest(body: any) {
+function createMockRequest(body: Record<string, unknown>) {
   return {
     json: async () => body,
     headers: {
@@ -68,7 +66,7 @@ function createMockRequest(body: any) {
         return null;
       },
     },
-  } as any;
+  } as unknown as Parameters<typeof POST>[0];
 }
 
 describe('POST /api/send-message', () => {
@@ -174,7 +172,7 @@ describe('POST /api/send-message', () => {
       mockGetDevicesInRadius.mockResolvedValue([
         { deviceId: 'device1', token: 'token1', geohash: 'hash1', updatedAt: Date.now() },
         { deviceId: 'device2', token: 'token2', geohash: 'hash2', updatedAt: Date.now() },
-      ] as any);
+      ]);
 
       const request = createMockRequest({
         sightingType: 'Police',

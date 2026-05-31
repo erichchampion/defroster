@@ -636,6 +636,7 @@ button { font-family: inherit; }
 }
 @media (max-width: 560px) {
   .df-wordmark { font-size: 1.15rem; }
+  .brand-btn .df-wordmark { display: none; }
   .topnav { gap: 10px; }
   .nav-link { font-size: .92rem; }
   .onb-priv-grid { grid-template-columns: 1fr; }

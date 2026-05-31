@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import { useI18n } from '@/lib/contexts/I18nContext';
 import { Apple, Book, Check, Eye, Home, Lock, Pin, Plus, Share, ICON_MAP } from './Icons';
 
@@ -137,7 +136,6 @@ export default function LocationPermission({ onRequestPermission, onOpenGuide }:
         <div className="wrap onb-hero-inner">
           <div className="onb-hero-copy">
             <div className="onb-brandmark">
-              <Image src="/appicon/defroster-512x512.png" alt="Defroster app icon" width={60} height={60} className="onb-brandmark-img" />
               <span className="df-wordmark" style={{ fontSize: '1.5rem' }}>Defroster</span>
             </div>
             <span className="eyebrow">{o.eyebrow}</span>

@@ -18,6 +18,12 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Firebase Cloud Functions is a separate package with its own
+      // package.json, tsconfig and lint setup; it is linted independently.
+      "functions/**",
+      // Node CommonJS build scripts and config that legitimately use require().
+      "scripts/**",
+      "jest.config.js",
     ],
   },
 ];

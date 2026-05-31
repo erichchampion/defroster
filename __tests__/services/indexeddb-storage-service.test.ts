@@ -1,15 +1,49 @@
 import { IndexedDBStorageService } from '@/lib/services/indexeddb-storage-service';
-import { Message, GeoLocation } from '@/lib/types/message';
+import { Message } from '@/lib/types/message';
 import { AppState } from '@/lib/types/app-state';
 import { ONE_WEEK_MS, ONE_DAY_MS } from '@/lib/constants/time';
 
+// Minimal mock shapes for the subset of the IndexedDB API these tests exercise.
+type MockEventHandler = ((event?: { target?: unknown }) => void) | null;
+
+interface MockIDBRequest {
+  onsuccess: MockEventHandler;
+  onerror: MockEventHandler;
+  onupgradeneeded?: MockEventHandler;
+  result?: unknown;
+  error?: unknown;
+}
+
+interface MockObjectStore {
+  add: jest.Mock;
+  put: jest.Mock;
+  delete: jest.Mock;
+  clear: jest.Mock;
+  openCursor: jest.Mock;
+  getAll: jest.Mock;
+  createIndex: jest.Mock;
+  get?: jest.Mock;
+  index?: jest.Mock;
+}
+
+interface MockTransaction {
+  objectStore: jest.Mock;
+  oncomplete: MockEventHandler;
+  onerror: MockEventHandler;
+}
+
+interface MockDB {
+  transaction: jest.Mock;
+  createObjectStore: jest.Mock;
+  objectStoreNames: { contains: jest.Mock };
+}
+
 describe('IndexedDBStorageService', () => {
   let service: IndexedDBStorageService;
-  let mockDB: any;
-  let mockObjectStore: any;
-  let mockTransaction: any;
-  let mockRequest: any;
-  let mockCursor: any;
+  let mockDB: MockDB;
+  let mockObjectStore: MockObjectStore;
+  let mockTransaction: MockTransaction;
+  let mockRequest: MockIDBRequest;
 
   beforeEach(() => {
     service = new IndexedDBStorageService();
@@ -49,16 +83,10 @@ describe('IndexedDBStorageService', () => {
       result: mockDB,
     };
 
-    // Mock cursor
-    mockCursor = {
-      value: null,
-      continue: jest.fn(),
-    };
-
     // Mock indexedDB
     global.indexedDB = {
       open: jest.fn(() => mockRequest),
-    } as any;
+    } as unknown as IDBFactory;
   });
 
   afterEach(() => {
@@ -72,7 +100,7 @@ describe('IndexedDBStorageService', () => {
       // Simulate successful database opening
       setTimeout(() => {
         if (mockRequest.onsuccess) {
-          mockRequest.onsuccess({ target: mockRequest } as any);
+          mockRequest.onsuccess({ target: mockRequest });
         }
       }, 0);
 
@@ -86,10 +114,10 @@ describe('IndexedDBStorageService', () => {
       // Simulate database upgrade
       setTimeout(() => {
         if (mockRequest.onupgradeneeded) {
-          mockRequest.onupgradeneeded({ target: mockRequest } as any);
+          mockRequest.onupgradeneeded({ target: mockRequest });
         }
         if (mockRequest.onsuccess) {
-          mockRequest.onsuccess({ target: mockRequest } as any);
+          mockRequest.onsuccess({ target: mockRequest });
         }
       }, 0);
 
@@ -131,7 +159,7 @@ describe('IndexedDBStorageService', () => {
       const initPromise = service.initialize();
       setTimeout(() => {
         if (mockRequest.onsuccess) {
-          mockRequest.onsuccess({ target: mockRequest } as any);
+          mockRequest.onsuccess({ target: mockRequest });
         }
       }, 0);
       await initPromise;
@@ -145,7 +173,7 @@ describe('IndexedDBStorageService', () => {
 
       setTimeout(() => {
         if (putRequest.onsuccess) {
-          putRequest.onsuccess({} as any);
+          putRequest.onsuccess({});
         }
       }, 0);
 
@@ -195,7 +223,7 @@ describe('IndexedDBStorageService', () => {
       const initPromise = service.initialize();
       setTimeout(() => {
         if (mockRequest.onsuccess) {
-          mockRequest.onsuccess({ target: mockRequest } as any);
+          mockRequest.onsuccess({ target: mockRequest });
         }
       }, 0);
       await initPromise;
@@ -210,11 +238,11 @@ describe('IndexedDBStorageService', () => {
       // Simulate each put operation succeeding
       setTimeout(() => {
         if (putRequest.onsuccess) {
-          putRequest.onsuccess({} as any);
-          putRequest.onsuccess({} as any);
+          putRequest.onsuccess({});
+          putRequest.onsuccess({});
         }
         if (mockTransaction.oncomplete) {
-          mockTransaction.oncomplete({} as any);
+          mockTransaction.oncomplete({});
         }
       }, 0);
 
@@ -228,7 +256,7 @@ describe('IndexedDBStorageService', () => {
       const initPromise = service.initialize();
       setTimeout(() => {
         if (mockRequest.onsuccess) {
-          mockRequest.onsuccess({ target: mockRequest } as any);
+          mockRequest.onsuccess({ target: mockRequest });
         }
       }, 0);
       await initPromise;
@@ -253,7 +281,7 @@ describe('IndexedDBStorageService', () => {
 
       setTimeout(() => {
         if (getAllRequest.onsuccess) {
-          getAllRequest.onsuccess({ target: getAllRequest } as any);
+          getAllRequest.onsuccess({ target: getAllRequest });
         }
       }, 0);
 
@@ -267,7 +295,7 @@ describe('IndexedDBStorageService', () => {
       const initPromise = service.initialize();
       setTimeout(() => {
         if (mockRequest.onsuccess) {
-          mockRequest.onsuccess({ target: mockRequest } as any);
+          mockRequest.onsuccess({ target: mockRequest });
         }
       }, 0);
       await initPromise;
@@ -317,7 +345,7 @@ describe('IndexedDBStorageService', () => {
               value: expiredMessages[callCount],
               delete: jest.fn(() => {
                 if (deleteRequest.onsuccess) {
-                  deleteRequest.onsuccess({} as any);
+                  deleteRequest.onsuccess({});
                 }
               }),
               continue: jest.fn(() => {
@@ -326,12 +354,12 @@ describe('IndexedDBStorageService', () => {
               }),
             };
             if (cursorRequest.onsuccess) {
-              cursorRequest.onsuccess({ target: cursorRequest } as any);
+              cursorRequest.onsuccess({ target: cursorRequest });
             }
           } else {
             cursorRequest.result = null;
             if (cursorRequest.onsuccess) {
-              cursorRequest.onsuccess({ target: cursorRequest } as any);
+              cursorRequest.onsuccess({ target: cursorRequest });
             }
           }
         };
@@ -348,7 +376,7 @@ describe('IndexedDBStorageService', () => {
       const initPromise = service.initialize();
       setTimeout(() => {
         if (mockRequest.onsuccess) {
-          mockRequest.onsuccess({ target: mockRequest } as any);
+          mockRequest.onsuccess({ target: mockRequest });
         }
       }, 0);
       await initPromise;
@@ -362,7 +390,7 @@ describe('IndexedDBStorageService', () => {
 
       setTimeout(() => {
         if (clearRequest.onsuccess) {
-          clearRequest.onsuccess({} as any);
+          clearRequest.onsuccess({});
         }
       }, 0);
 
@@ -377,7 +405,7 @@ describe('IndexedDBStorageService', () => {
       const initPromise = service.initialize();
       setTimeout(() => {
         if (mockRequest.onsuccess) {
-          mockRequest.onsuccess({ target: mockRequest } as any);
+          mockRequest.onsuccess({ target: mockRequest });
         }
       }, 0);
       await initPromise;
@@ -402,7 +430,7 @@ describe('IndexedDBStorageService', () => {
 
         setTimeout(() => {
           if (putRequest.onsuccess) {
-            putRequest.onsuccess({} as any);
+            putRequest.onsuccess({});
           }
         }, 0);
 
@@ -428,7 +456,7 @@ describe('IndexedDBStorageService', () => {
 
         setTimeout(() => {
           if (putRequest.onerror) {
-            putRequest.onerror({} as any);
+            putRequest.onerror({});
           }
         }, 0);
 
@@ -447,13 +475,13 @@ describe('IndexedDBStorageService', () => {
 
         setTimeout(() => {
           if (openRequest.onsuccess) {
-            openRequest.onsuccess({ target: openRequest } as any);
+            openRequest.onsuccess({ target: openRequest });
           }
         }, 0);
 
         setTimeout(() => {
           if (putRequest.onsuccess) {
-            putRequest.onsuccess({} as any);
+            putRequest.onsuccess({});
           }
         }, 10);
 
@@ -486,7 +514,7 @@ describe('IndexedDBStorageService', () => {
         setTimeout(() => {
           getRequest.result = savedState;
           if (getRequest.onsuccess) {
-            getRequest.onsuccess({ target: getRequest } as any);
+            getRequest.onsuccess({ target: getRequest });
           }
         }, 0);
 
@@ -504,7 +532,7 @@ describe('IndexedDBStorageService', () => {
         setTimeout(() => {
           getRequest.result = null;
           if (getRequest.onsuccess) {
-            getRequest.onsuccess({ target: getRequest } as any);
+            getRequest.onsuccess({ target: getRequest });
           }
         }, 0);
 
@@ -532,7 +560,7 @@ describe('IndexedDBStorageService', () => {
         setTimeout(() => {
           getRequest.result = staleState;
           if (getRequest.onsuccess) {
-            getRequest.onsuccess({ target: getRequest } as any);
+            getRequest.onsuccess({ target: getRequest });
           }
         }, 0);
 
@@ -548,7 +576,7 @@ describe('IndexedDBStorageService', () => {
 
         setTimeout(() => {
           if (getRequest.onerror) {
-            getRequest.onerror({ target: { error: new Error('Get failed') } } as any);
+            getRequest.onerror({ target: { error: new Error('Get failed') } });
           }
         }, 0);
 
@@ -566,7 +594,7 @@ describe('IndexedDBStorageService', () => {
 
         setTimeout(() => {
           if (deleteRequest.onsuccess) {
-            deleteRequest.onsuccess({} as any);
+            deleteRequest.onsuccess({});
           }
         }, 0);
 
@@ -582,7 +610,7 @@ describe('IndexedDBStorageService', () => {
 
         setTimeout(() => {
           if (deleteRequest.onerror) {
-            deleteRequest.onerror({} as any);
+            deleteRequest.onerror({});
           }
         }, 0);
 

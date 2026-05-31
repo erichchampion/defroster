@@ -10,10 +10,10 @@ const renderWithI18n = (component: React.ReactElement) => {
 
 // Mock Leaflet and react-leaflet
 jest.mock('react-leaflet', () => ({
-  MapContainer: ({ children }: any) => <div data-testid="map-container">{children}</div>,
+  MapContainer: ({ children }: { children?: React.ReactNode }) => <div data-testid="map-container">{children}</div>,
   TileLayer: () => <div data-testid="tile-layer" />,
-  Marker: ({ children }: any) => <div data-testid="marker">{children}</div>,
-  Popup: ({ children }: any) => <div data-testid="popup">{children}</div>,
+  Marker: ({ children }: { children?: React.ReactNode }) => <div data-testid="marker">{children}</div>,
+  Popup: ({ children }: { children?: React.ReactNode }) => <div data-testid="popup">{children}</div>,
   Circle: () => <div data-testid="circle" />,
   useMap: () => ({
     setView: jest.fn(),

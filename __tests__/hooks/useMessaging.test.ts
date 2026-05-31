@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useMessaging } from '@/app/hooks/useMessaging';
 import { ServicesProvider } from '@/lib/contexts/ServicesContext';
+import { Message } from '@/lib/types/message';
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -40,8 +41,8 @@ describe('useMessaging', () => {
     React.createElement(
       ServicesProvider,
       {
-        messagingService: mockMessagingService as any,
-        storageService: mockStorageService as any,
+        messagingService: mockMessagingService as unknown as React.ComponentProps<typeof ServicesProvider>['messagingService'],
+        storageService: mockStorageService as unknown as React.ComponentProps<typeof ServicesProvider>['storageService'],
       },
       children
     );
@@ -75,7 +76,7 @@ describe('useMessaging', () => {
     global.Notification = {
       permission: 'default',
       requestPermission: jest.fn(() => Promise.resolve('granted')),
-    } as any;
+    } as unknown as typeof Notification;
 
     // Mock navigator.onLine
     Object.defineProperty(global.navigator, 'onLine', {
@@ -476,7 +477,7 @@ describe('useMessaging', () => {
     it('should add new messages to state and save to IndexedDB when received', async () => {
       const { result } = renderHook(() => useMessaging(), { wrapper });
 
-      let messageCallback: any;
+      let messageCallback: (message: Message) => void | Promise<void>;
       mockMessagingService.onMessage.mockImplementation((cb) => {
         messageCallback = cb;
       });
@@ -506,7 +507,7 @@ describe('useMessaging', () => {
     it('should clean up listener on unmount', () => {
       const { result } = renderHook(() => useMessaging(), { wrapper });
 
-      let cleanup: any;
+      let cleanup: ReturnType<typeof result.current.setupMessageListener>;
       act(() => {
         cleanup = result.current.setupMessageListener();
       });
@@ -798,7 +799,7 @@ describe('useMessaging', () => {
     });
 
     it('should handle Notification API not available', async () => {
-      // @ts-ignore
+      // @ts-expect-error Intentionally deleting Notification to test its absence
       delete global.Notification;
 
       const { result } = renderHook(() => useMessaging(), { wrapper });

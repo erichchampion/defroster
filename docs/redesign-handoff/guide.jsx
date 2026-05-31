@@ -1,27 +1,18 @@
-'use client';
+/* Defroster — Know Your Rights guide (scannable) */
+const { useState: useStateG } = React;
 
-import { useState, type ReactNode } from 'react';
-import { useI18n } from '@/lib/contexts/I18nContext';
-import { Alert, ArrowLeft, Check, ChevRight, Heart, Lock, Scale, Shield, ShieldCheck } from './Icons';
-
-interface ImmigrationGuideProps {
-  /** Navigate back to the alerts screen (optional in isolated tests). */
-  onBack?: () => void;
-}
-
-function Accordion({ items }: { items: string[][] }) {
-  const [open, setOpen] = useState(0);
+function Accordion({ items }) {
+  const [open, setOpen] = useStateG(0);
   return (
     <div className="acc">
-      {items.map((item, i) => {
-        const [title, body] = item;
+      {items.map(([title, body], i) => {
         const on = open === i;
         return (
-          <div key={i} className={'acc-item' + (on ? ' is-open' : '')}>
+          <div key={i} className={"acc-item" + (on ? " is-open" : "")}>
             <button className="acc-head" aria-expanded={on} onClick={() => setOpen(on ? -1 : i)}>
               <span className="acc-num">{i + 1}</span>
               <span className="acc-title">{title}</span>
-              <span className="acc-chev"><ChevRight size={22} style={{ transform: 'rotate(90deg)' }} /></span>
+              <span className="acc-chev"><ChevDown size={22} /></span>
             </button>
             {on && <div className="acc-body"><p>{body}</p></div>}
           </div>
@@ -31,7 +22,7 @@ function Accordion({ items }: { items: string[][] }) {
   );
 }
 
-function GuideSection({ id, n, title, children }: { id: string; n: string; title: string; children: ReactNode }) {
+function GuideSection({ id, n, title, children }) {
   return (
     <section id={id} className="g-section read">
       <div className="g-section-head">
@@ -43,18 +34,12 @@ function GuideSection({ id, n, title, children }: { id: string; n: string; title
   );
 }
 
-export default function ImmigrationGuide({ onBack }: ImmigrationGuideProps) {
-  const { t } = useI18n();
+function GuideScreen({ t, go }) {
   const g = t.guide;
   const s = g.sections;
-
-  const toc: [string, string][] = [
-    ['stopped', s.stopped],
-    ['warrants', s.warrants],
-    ['school', s.school],
-    ['police', s.police],
-    ['help', s.help],
-    ['legal', s.legal],
+  const toc = [
+    ["stopped", s.stopped], ["warrants", s.warrants], ["school", s.school],
+    ["police", s.police], ["help", s.help], ["legal", s.legal],
   ];
 
   return (
@@ -62,10 +47,8 @@ export default function ImmigrationGuide({ onBack }: ImmigrationGuideProps) {
       {/* Header */}
       <header className="g-hero">
         <div className="wrap read">
-          {onBack && (
-            <button className="back-btn" onClick={onBack}><ArrowLeft size={20} /> {t.nav.app}</button>
-          )}
-          <span className="eyebrow" style={{ color: 'var(--ember-600)' }}>Defroster · {t.nav.guide}</span>
+          <button className="back-btn" onClick={() => go("app")}><ArrowLeft size={20} /> {t.nav.app}</button>
+          <span className="eyebrow" style={{ color: "var(--ember-600)" }}>Defroster · {t.nav.guide}</span>
           <h1 className="g-title">{g.title}</h1>
           <p className="g-sub">{g.sub}</p>
           <a className="g-rights-link" href={g.rightsUrl} target="_blank" rel="noopener noreferrer">
@@ -79,7 +62,7 @@ export default function ImmigrationGuide({ onBack }: ImmigrationGuideProps) {
         <span className="g-toc-label">{g.tocTitle}</span>
         <div className="g-toc-chips">
           {toc.map(([id, label]) => (
-            <a key={id} className="g-toc-chip" href={'#' + id}>{label}</a>
+            <a key={id} className="g-toc-chip" href={"#" + id}>{label}</a>
           ))}
         </div>
       </nav>
@@ -127,8 +110,7 @@ export default function ImmigrationGuide({ onBack }: ImmigrationGuideProps) {
           <p>{g.warrants.ask}</p>
         </div>
         <figure className="warrant-fig">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/warrants.jpg" alt="Comparison of a judicial warrant and a DHS administrative warrant" loading="lazy" />
+          <img src="public/warrants.jpg" alt="Comparison of a judicial warrant and a DHS administrative warrant" loading="lazy" />
           <figcaption>{g.warrants.imgCaption}</figcaption>
         </figure>
       </GuideSection>
@@ -154,7 +136,7 @@ export default function ImmigrationGuide({ onBack }: ImmigrationGuideProps) {
       <GuideSection id="help" n="05" title={s.help}>
         <Accordion items={g.help.items} />
         <a className="g-inline-link" href={g.help.repsUrl} target="_blank" rel="noopener noreferrer">
-          <ChevRight size={16} /> {g.help.repsLabel}
+          <ChevRight size={16} /> {t.__lang === "es-us" ? "Encuentra a tus representantes" : "Find your representatives"}
         </a>
       </GuideSection>
 
@@ -171,12 +153,12 @@ export default function ImmigrationGuide({ onBack }: ImmigrationGuideProps) {
           <Heart size={26} />
           <p>{g.takeaway}</p>
         </div>
-        {onBack && (
-          <div className="g-guide-cta">
-            <button className="btn btn-primary btn-lg" onClick={onBack}><ArrowLeft size={20} /> {g.backToAlerts}</button>
-          </div>
-        )}
+        <div className="g-guide-cta">
+          <button className="btn btn-primary btn-lg" onClick={() => go("app")}><ArrowLeft size={20} /> {t.__lang === "es-us" ? "Volver a las alertas" : "Back to alerts"}</button>
+        </div>
       </section>
     </main>
   );
 }
+
+Object.assign(window, { GuideScreen, Accordion, GuideSection });

@@ -1,18 +1,26 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Public_Sans, Spline_Sans_Mono } from "next/font/google";
 import "../globals.css";
 import { ClientProviders } from "../ClientProviders";
 import type { Metadata, Viewport } from "next";
 import { locales, localeToLanguage, getTranslationsByLocale, type Locale } from "@/lib/i18n/i18n";
 import { notFound } from "next/navigation";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
+  weight: ["400", "600", "700", "800"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const publicSans = Public_Sans({
+  variable: "--font-public-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const splineMono = Spline_Sans_Mono({
+  variable: "--font-spline-mono",
+  subsets: ["latin"],
+  weight: ["400", "600"],
 });
 
 export async function generateStaticParams() {
@@ -111,8 +119,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: "#FBF7F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#FBF7F1" },
   ],
 };
 
@@ -135,7 +143,7 @@ export default async function LocaleLayout({
   return (
     <html lang={language}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${bricolage.variable} ${publicSans.variable} ${splineMono.variable} antialiased`}
       >
         <ClientProviders initialLocale={locale}>
           {children}

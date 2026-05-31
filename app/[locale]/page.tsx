@@ -6,13 +6,18 @@ import { useMessaging } from '@/app/hooks/useMessaging';
 import { useServices } from '@/lib/contexts/ServicesContext';
 import dynamic from 'next/dynamic';
 import LocationPermission from '@/app/components/LocationPermission';
-import MessageForm from '@/app/components/MessageForm';
 import MessageList from '@/app/components/MessageList';
 import ImmigrationGuide from '@/app/components/ImmigrationGuide';
-import { GeoLocation } from '@/lib/types/message';
+import ReportSheet from '@/app/components/ReportSheet';
+import TopBar from '@/app/components/TopBar';
+import Footer from '@/app/components/Footer';
+import { Bell, ChevRight, List, MapIcon, Plus, Scale, X } from '@/app/components/Icons';
+import { GeoLocation, SightingType } from '@/lib/types/message';
+import { getSightingSigClass } from '@/lib/constants/colors';
 import { registerServiceWorker } from '@/lib/utils/register-sw';
 import { useI18n } from '@/lib/contexts/I18nContext';
 import { handleStateSaveError } from '@/lib/utils/error-handling';
+import type { Screen } from '@/lib/types/navigation';
 import {
   MESSAGE_REFRESH_INTERVAL_MS,
   CLEANUP_INTERVAL_MS,
@@ -23,6 +28,8 @@ import {
 const SightingMap = dynamic(() => import('@/app/components/SightingMap'), {
   ssr: false,
 });
+
+const TYPE_ORDER: SightingType[] = ['ICE', 'Army', 'Police'];
 
 export default function Home() {
   const { t } = useI18n();
@@ -52,6 +59,17 @@ export default function Home() {
   const [isReady, setIsReady] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+
+  // UI state (presentation only)
+  const [screen, setScreen] = useState<Screen>('onboarding');
+  const [view, setView] = useState<'map' | 'list'>('map');
+  const [reportOpen, setReportOpen] = useState(false);
+  const [notifDismissed, setNotifDismissed] = useState(false);
+
+  const go = useCallback((next: Screen) => {
+    setScreen(next);
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  }, []);
 
   // Detect if running as standalone PWA and if on iOS
   useEffect(() => {
@@ -100,6 +118,13 @@ export default function Home() {
     }
   }, [permissionGranted, location, isReady, permission, token, deviceId, requestPermission, registerDevice, getMessages]);
 
+  // Once ready, move from onboarding to the main app.
+  useEffect(() => {
+    if (isReady && permissionGranted && location && screen === 'onboarding') {
+      setScreen('app');
+    }
+  }, [isReady, permissionGranted, location, screen]);
+
   // Set up message listener
   useEffect(() => {
     if (isReady) {
@@ -134,7 +159,7 @@ export default function Home() {
 
   // Handle sending messages
   const handleSendMessage = async (
-    sightingType: 'ICE' | 'Army' | 'Police',
+    sightingType: SightingType,
     sightingLocation: GeoLocation
   ) => {
     if (!location) return;
@@ -258,121 +283,139 @@ export default function Home() {
     };
   }, [permissionGranted, location, getMessages, storageService]);
 
-  if (!permissionGranted || !location) {
-    return <LocationPermission onRequestPermission={requestLocationPermission} />;
-  }
+  const enableNotifications = async () => {
+    const fcmToken = await requestPermission();
+    if (fcmToken && location && deviceId) {
+      await registerDevice(location, fcmToken, deviceId);
+    }
+  };
 
-  if (!isReady) {
-    console.log('Showing loading screen');
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">{t.main.loadingMessage}</p>
-        </div>
-      </div>
-    );
-  }
-
-  console.log('Showing main app');
+  const showOnboarding = !permissionGranted || !location;
+  const effectiveScreen: Screen = screen === 'guide' ? 'guide' : showOnboarding ? 'onboarding' : 'app';
+  const notificationsActive = permission === 'granted' && !!token;
+  // In-app banner: prompt to enable notifications when possible (iOS needs install first).
+  const showNotifBanner = !notifDismissed && permission !== 'granted' && (!isIOS || isStandalone);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-2xl mx-auto py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t.main.heading}</h1>
-          <p className="text-gray-600">
-            {t.main.subtitle}
-          </p>
-          <div className="flex items-center gap-3 mt-2">
-            {isOffline && (
-              <p className="text-sm text-amber-600">
-                {t.main.offlineMode}
-              </p>
-            )}
-            {!isOffline && permission === 'granted' && token && (
-              <p className="text-sm text-green-600">
-                {t.main.notificationsEnabled}
-              </p>
-            )}
-          </div>
-          {permission !== 'granted' && !isIOS && (
-            <button
-              onClick={async () => {
-                const fcmToken = await requestPermission();
-                if (fcmToken && location && deviceId) {
-                  await registerDevice(location, fcmToken, deviceId);
-                }
-              }}
-              className="mt-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded"
-            >
-              {t.main.enableNotificationsButton}
-            </button>
-          )}
-          {permission !== 'granted' && isIOS && !isStandalone && (
-            <div className="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-              <p className="font-semibold">{t.main.iosNotificationGuide.heading}</p>
-              <p className="mt-1">
-                {t.main.iosNotificationGuide.instructions}
-                <svg className="inline w-4 h-4 mx-1" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
-                </svg>
-              </p>
+    <div className="df-shell">
+      <a href="#main" className="skip-link">Skip to content</a>
+      <TopBar screen={effectiveScreen} go={go} />
+
+      <div id="main">
+        {screen === 'guide' ? (
+          <ImmigrationGuide onBack={() => go(showOnboarding ? 'onboarding' : 'app')} />
+        ) : showOnboarding ? (
+          <LocationPermission
+            onRequestPermission={requestLocationPermission}
+            onOpenGuide={() => go('guide')}
+          />
+        ) : !isReady ? (
+          <div className="loading-screen">
+            <div className="text-center">
+              <div className="spinner" />
+              <p style={{ color: 'var(--ink-2)' }}>{t.main.loadingMessage}</p>
             </div>
-          )}
-          {permission !== 'granted' && isIOS && isStandalone && (
-            <button
-              onClick={async () => {
-                const fcmToken = await requestPermission();
-                if (fcmToken && location && deviceId) {
-                  await registerDevice(location, fcmToken, deviceId);
-                }
-              }}
-              className="mt-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded"
-            >
-              {t.main.enableNotificationsButton}
-            </button>
-          )}
-          {permission === 'granted' && !token && (
-            <p className="text-sm text-amber-600 mt-1">
-              {t.main.notificationsUnavailable}
-            </p>
-          )}
-        </div>
+          </div>
+        ) : (
+          <main className="app">
+            <div className="wrap app-head">
+              <div className="app-head-l">
+                <h1 className="app-title">{t.mainApp.nearbyTitle}</h1>
+                <div className="app-status">
+                  {isOffline ? (
+                    <span className="chip chip-warn">{t.mainApp.statusOffline}</span>
+                  ) : notificationsActive ? (
+                    <span className="chip chip-ok"><span className="live-dot" /> {t.mainApp.statusOn}</span>
+                  ) : null}
+                  <span className="app-radius">{t.mainApp.radiusNote}</span>
+                </div>
+              </div>
+              <button className="btn btn-primary report-cta-top" onClick={() => setReportOpen(true)}>
+                <Plus size={22} /> {t.mainApp.reportCta}
+              </button>
+            </div>
 
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t.main.sightingsMapHeading}</h2>
-          <SightingMap messages={messages} currentLocation={location} />
-        </div>
+            {showNotifBanner && (
+              <div className="wrap">
+                <div className="notif-banner">
+                  <span className="notif-ico"><Bell size={22} /></span>
+                  <div className="notif-copy">
+                    <p className="notif-title">{t.mainApp.enableNotif}</p>
+                    <p className="notif-why">{t.mainApp.notifWhy}</p>
+                  </div>
+                  <button className="btn btn-ghost notif-btn" onClick={enableNotifications}>
+                    {t.mainApp.enableNotif}
+                  </button>
+                  <button className="icon-btn" aria-label={t.report.cancel} onClick={() => setNotifDismissed(true)}>
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+            )}
 
-        <div className="mb-6">
-          <MessageForm onSendMessage={handleSendMessage} currentLocation={location} />
-        </div>
+            {/* Mobile view toggle */}
+            <div className="wrap mob-toggle-wrap">
+              <div className="seg seg-wide mob-toggle">
+                <button className={'seg-btn' + (view === 'map' ? ' is-on' : '')} onClick={() => setView('map')}>
+                  <MapIcon size={18} /> {t.mainApp.mapTab}
+                </button>
+                <button className={'seg-btn' + (view === 'list' ? ' is-on' : '')} onClick={() => setView('list')}>
+                  <List size={18} /> {t.mainApp.listTab}
+                </button>
+              </div>
+            </div>
 
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t.main.nearbySightingsListHeading}</h2>
-          <MessageList messages={messages} />
-        </div>
+            <div className="wrap app-grid">
+              <section className={'app-map-col' + (view === 'list' ? ' mob-hide' : '')}>
+                <div className="map-card card">
+                  <SightingMap messages={messages} currentLocation={location} />
+                </div>
+                <div className="legend">
+                  {TYPE_ORDER.map((k) => (
+                    <span key={k} className={'legend-item ' + getSightingSigClass(k)}>
+                      <span className="legend-dot" /> {t.report.types[k].label}
+                    </span>
+                  ))}
+                </div>
+              </section>
 
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-sm text-gray-700">
-            <strong>{t.main.knowYourRights.heading}</strong> {t.main.knowYourRights.description}{' '}
-            <a
-              href={t.main.knowYourRights.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 underline"
-            >
-              {t.main.knowYourRights.url}
-            </a>
-          </p>
-        </div>
+              <aside className={'app-side' + (view === 'map' ? ' mob-hide' : '')}>
+                <div className="side-head">
+                  <h2 className="side-title">{t.mainApp.nearbyTitle}</h2>
+                  <span className="side-count">{messages.length}</span>
+                </div>
+                <MessageList messages={messages} currentLocation={location} />
 
-        {/* Immigration Rights & Protection Guide */}
-        <div className="mt-6">
-          <ImmigrationGuide />
-        </div>
+                <button className="rights-card" onClick={() => go('guide')}>
+                  <span className="rights-ico"><Scale size={26} /></span>
+                  <span className="rights-text">
+                    <span className="rights-title">{t.mainApp.rightsCardTitle}</span>
+                    <span className="rights-sub">{t.mainApp.rightsCardSub}</span>
+                  </span>
+                  <span className="rights-cta"><ChevRight size={22} /></span>
+                </button>
+              </aside>
+            </div>
+
+            {/* Mobile sticky report */}
+            <div className="report-dock">
+              <button className="btn btn-primary btn-lg btn-block" onClick={() => setReportOpen(true)}>
+                <Plus size={22} /> {t.mainApp.reportCta}
+              </button>
+            </div>
+          </main>
+        )}
       </div>
+
+      <Footer />
+
+      {reportOpen && location && (
+        <ReportSheet
+          onSendMessage={handleSendMessage}
+          currentLocation={location}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </div>
   );
 }

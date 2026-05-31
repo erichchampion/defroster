@@ -94,7 +94,7 @@ describe('SightingMap', () => {
       expect(markers.length).toBeGreaterThan(0);
 
       // Current location popup
-      expect(screen.getByText('Your Location')).toBeInTheDocument();
+      expect(screen.getByText('You are here')).toBeInTheDocument();
     });
   });
 
@@ -116,7 +116,7 @@ describe('SightingMap', () => {
     it('should display Army sighting information', () => {
       renderWithI18n(<SightingMap messages={mockMessages} currentLocation={mockCurrentLocation} />);
 
-      expect(screen.getByText('Army')).toBeInTheDocument();
+      expect(screen.getByText('Army / National Guard')).toBeInTheDocument();
     });
 
     it('should display Police sighting information', () => {

@@ -6,6 +6,176 @@
     "applicationName": "Defroster",
     "keywords": "safety, alerts, community, location-based, sightings"
   },
+  "nav": {
+    "app": "Alerts",
+    "guide": "Know Your Rights"
+  },
+  "onboarding": {
+    "eyebrow": "Anonymous · Real-time · On your block",
+    "title": "Know when ICE, the Army, or police are nearby.",
+    "sub": "Defroster lets neighbors quietly warn each other. One tap sends an anonymous alert to everyone within 5 miles — no name, no account, no trace.",
+    "trust": ["100% anonymous", "No account needed", "Auto-deletes"],
+    "cta": "Turn on location to begin",
+    "ctaLoading": "Getting your location…",
+    "ctaNote": "We use your location only to show alerts near you. It never leaves your device with your name attached.",
+    "secondaryRights": "Read: Know Your Rights",
+    "secondaryStory": "Why we built this",
+    "ios": {
+      "badge": "iPhone & iPad",
+      "title": "Add Defroster to your Home Screen",
+      "required": "Required on iOS — alerts and notifications only work once Defroster is saved to your Home Screen as a web app.",
+      "steps": [
+        ["Tap", "Share", "in Safari", "share"],
+        ["Choose", "Add to Home Screen", "", "plus"],
+        ["Open Defroster", "from your Home Screen", "", "home"]
+      ],
+      "location": "Also turn on {locationServicesLink} for Safari Websites, then save this site to your {homeScreenLink}.",
+      "locationServicesText": "Location Services",
+      "locationServicesUrl": "https://support.apple.com/en-us/102515",
+      "homeScreenText": "Home Screen",
+      "homeScreenUrl": "https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios"
+    },
+    "privacyTitle": "What stays private",
+    "privacy": [
+      ["Location is only used to find nearby alerts", "lock"],
+      ["Your spot is blurred to the nearest block (~250 ft)", "blur"],
+      ["Reports leave the server after 1 day", "clock"],
+      ["No personal data is ever stored", "shield"],
+      ["No accounts, no sign-in, ever", "user"],
+      ["You can turn off location anytime", "toggle"]
+    ],
+    "storyTitle": "Why Defroster exists",
+    "story1": "In the early hours of October 2, a South Shore Drive apartment building in Chicago was torn apart by a federal raid. Agents stormed the five-story complex with helicopters, armored vehicles, and flash-bang grenades. Families were forced from their homes, zip-tied in the street — some unclothed — and left outside for hours.",
+    "story2": "Incidents like this show the urgent need for tools that protect and inform. Defroster is an anonymous, open-source app that lets anyone report Immigration and Customs Enforcement (ICE) activity with a single tap — so communities can stay safe, informed, and connected while remaining fully anonymous."
+  },
+  "mainApp": {
+    "reportCta": "Report a sighting",
+    "statusOn": "Alerts on",
+    "statusOffline": "Offline — showing saved alerts",
+    "enableNotif": "Turn on notifications",
+    "notifWhy": "Get a heads-up when something is reported within 5 miles.",
+    "mapTab": "Map",
+    "listTab": "List",
+    "nearbyTitle": "Nearby sightings",
+    "radiusNote": "Within 5 miles of you",
+    "empty": "All clear nearby",
+    "emptySub": "No sightings reported around you right now.",
+    "yourLocation": "You are here",
+    "sightingAt": "Reported near here",
+    "withinRadius": "Within 5 miles of you",
+    "rightsCardTitle": "Know your rights",
+    "rightsCardSub": "What to do if ICE is at the door — plain and clear.",
+    "rightsCardCta": "Open the guide",
+    "refresh": "Refresh"
+  },
+  "report": {
+    "title": "What did you see?",
+    "sub": "Pick one. Your report is anonymous and the location is blurred to the block.",
+    "types": {
+      "ICE": { "label": "ICE", "full": "Immigration & Customs Enforcement", "hint": "Immigration enforcement agents" },
+      "Army": { "label": "Army / National Guard", "full": "Army or National Guard", "hint": "Military or National Guard" },
+      "Police": { "label": "Police", "full": "Local or state police", "hint": "Local or state police" }
+    },
+    "locLabel": "Your location (blurred to the block)",
+    "send": "Send anonymous alert",
+    "sending": "Sending…",
+    "doneTitle": "Alert sent",
+    "doneSub": "Neighbors within 5 miles have been notified. Thank you for looking out.",
+    "doneClose": "Done",
+    "cancel": "Cancel"
+  },
+  "guide": {
+    "title": "Know Your Rights",
+    "sub": "What to do when U.S. Immigration and Customs Enforcement (ICE) is at the door. Save this. Share it.",
+    "tocTitle": "Jump to",
+    "sections": {
+      "stopped": "If you're stopped by ICE",
+      "warrants": "Judicial warrant vs. ICE paper",
+      "school": "School safety",
+      "police": "Local police & 287(g)",
+      "help": "How everyone can help",
+      "legal": "Need legal help?"
+    },
+    "stopped": {
+      "rightsTitle": "Your rights — use them",
+      "rights": [
+        "You have the right to remain silent. Use it.",
+        "Do not speak without a lawyer present.",
+        "Never lie or show false documents. (ICE can lie to you; you cannot lie to them.)",
+        "Memorize your A-number, your lawyer's phone number, and a family contact."
+      ],
+      "arrestedTitle": "If you're arrested",
+      "arrested": [
+        "Ask for a lawyer immediately.",
+        "If you can't afford one, ask for a public defender.",
+        "Do not speak to law enforcement without a lawyer."
+      ]
+    },
+    "warrants": {
+      "intro": "This is the single most important thing to know. ICE cannot enter your home without a warrant signed by a judge.",
+      "judicial": {
+        "tag": "Judicial warrant",
+        "verdict": "You must comply",
+        "points": [
+          "Signed by a judge, from a real court.",
+          "Says “Search and Seizure” and lists your name & address.",
+          "Has a judge's signature line."
+        ]
+      },
+      "admin": {
+        "tag": "ICE / DHS paper",
+        "verdict": "You can refuse",
+        "points": [
+          "Issued by ICE itself — not a judge.",
+          "Says “Warrant for Arrest of Alien”, not search.",
+          "Signed by an immigration officer, not a judge.",
+          "Does not let them enter your home."
+        ]
+      },
+      "ask": "Ask them to slip the warrant under the door or hold it to a window. If there's no judge's signature, you do not have to open the door.",
+      "imgCaption": "Real examples: a judicial warrant (left) and a DHS arrest warrant (right). ICE cannot enter your home with only the DHS document."
+    },
+    "school": {
+      "intro": "Contact your local board of education and teachers' union to:",
+      "points": [
+        "Understand their protection policies.",
+        "Ask how you can help — for all parents, not only immigrant families."
+      ]
+    },
+    "police": {
+      "warn": "Many areas have 287(g) agreements that require local police to work with ICE. Calling local police may bring ICE involvement.",
+      "what": "287(g) are federal agreements forcing local police to enforce immigration law — active in 1,000+ agencies across nearly all states. Only six states have banned them: Washington, Oregon, California, Illinois, New Jersey, and Connecticut."
+    },
+    "help": {
+      "items": [
+        ["Get involved locally", "Attend school board, city council, and town hall meetings. Join local immigrant-rights groups."],
+        ["Contact Congress", "Call your representatives regularly. Push for humane policy and due process."],
+        ["Support organizations", "Volunteer for phone banks, door-knocking, petitions. Donate to local rights groups."],
+        ["Stay informed", "Follow non-profit investigative media. Share good information with your community."],
+        ["Organize & mobilize", "Bring friends to meetings and actions. Build community networks."],
+        ["Sanctuary locations", "800+ houses of worship offer shelter. Note: they have no special legal protection from warrants."],
+        ["Repeal 287(g)", "These are local agreements. Ask your city council, mayor, and police chief to end them."]
+      ],
+      "repsUrl": "https://www.congress.gov/members/find-your-member",
+      "repsLabel": "Find your representatives"
+    },
+    "legal": {
+      "points": [
+        "Find an immigration lawyer before an emergency.",
+        "Be fully honest about your status — attorney–client privilege protects you.",
+        "Most firms offer help in multiple languages."
+      ]
+    },
+    "takeaway": "Know your rights, get legal help, and engage locally. Change happens at the community level.",
+    "backToAlerts": "Back to alerts",
+    "rightsUrl": "https://www.aclusocal.org/icenotwelcome",
+    "rightsUrlLabel": "aclusocal.org/icenotwelcome"
+  },
+  "footer": {
+    "privacy": "No accounts · No tracking · Open source",
+    "open": "Open source on GitHub",
+    "disclaimer": "Defroster is a community tool for safety information. It is not legal advice."
+  },
   "locationPermission": {
     "heading": "Location Permission Required",
     "description": "This app needs access to your location to send and receive alerts from nearby users within a 5-mile radius.",

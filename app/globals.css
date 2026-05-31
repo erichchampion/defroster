@@ -264,23 +264,35 @@ button { font-family: inherit; }
   background: color-mix(in srgb, var(--paper) 86%, transparent);
   backdrop-filter: saturate(1.2) blur(10px);
   border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
-.topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); min-height: 70px; }
+.topbar-inner { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--s4); min-height: 70px; }
 .brand-btn { display: inline-flex; align-items: center; gap: 10px; background: none; border: none; cursor: pointer; padding: 6px; margin-left: -6px; border-radius: var(--r-sm); }
 .df-logo { display: inline-grid; place-items: center; flex: none; }
 .df-logo-img { display: block; border-radius: 23%; box-shadow: var(--shadow-xs); border: 1px solid var(--line); object-fit: cover; }
-.df-wordmark { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+.df-wordmark { font-family: var(--font-display); font-weight: 800; font-size: 1.32rem; letter-spacing: -0.02em; color: var(--ink); }
 
 .topnav { display: flex; align-items: center; gap: var(--s5); }
 .nav-link {
   background: none; border: none; cursor: pointer; font-family: var(--font-sans);
   font-weight: 700; font-size: calc(1rem * var(--text-scale)); color: var(--ink-2);
-  padding: 8px 4px; position: relative;
+  padding: 8px 4px; position: relative; white-space: nowrap;
 }
 .nav-link:hover { color: var(--ink); }
 .nav-link.is-active { color: var(--accent-600); }
 .nav-link.is-active::after { content: ""; position: absolute; left: 4px; right: 4px; bottom: 0; height: 3px; border-radius: 3px; background: var(--accent); }
+.topbar-controls-wrap { display: inline-flex; align-items: center; }
 .topbar-controls { display: flex; align-items: center; gap: 10px; }
+/* "⋯" menu button — hidden on desktop, shown on narrow screens */
+.topbar-menu-btn {
+  display: none; align-items: center; justify-content: center;
+  background: var(--paper-2); border: 1px solid var(--line-2); border-radius: var(--r-pill);
+  cursor: pointer; color: var(--ink-2); min-width: 44px; min-height: 38px;
+  font-size: 1.2rem; line-height: 1; font-weight: 700; padding: 0 12px;
+}
+.topbar-menu-btn[aria-expanded="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-xs); }
 
 /* segmented control */
 .seg { display: inline-flex; background: var(--paper-2); border: 1px solid var(--line-2); border-radius: var(--r-pill); padding: 3px; }
@@ -608,9 +620,20 @@ button { font-family: inherit; }
   .warrant-compare { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
-  .topbar-controls { gap: 6px; }
+  .df-wordmark { font-size: 1.15rem; }
   .topnav { gap: 10px; }
   .nav-link { font-size: .92rem; }
+  /* Collapse text-size + language controls behind the "⋯" menu */
+  .topbar-menu-btn { display: inline-flex; }
+  .topbar-controls {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    flex-direction: column; gap: 10px; padding: 12px; min-width: 200px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--r-md); box-shadow: var(--shadow-lg); z-index: 60;
+  }
+  .topbar-controls.is-open { display: flex; }
+  .topbar-controls .seg { width: 100%; }
+  .topbar-controls .seg-btn { flex: 1; }
   .onb-priv-grid { grid-template-columns: 1fr; }
   .app-head { align-items: flex-start; }
   .notif-banner { flex-wrap: wrap; }

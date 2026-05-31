@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useI18n } from '@/lib/contexts/I18nContext';
 import { languageToLocale, type Language, type Locale } from '@/lib/i18n/i18n';
@@ -79,6 +80,48 @@ function TextSize() {
   );
 }
 
+function HeaderControls() {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="topbar-controls-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="topbar-menu-btn"
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="Settings"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span aria-hidden="true">⋯</span>
+      </button>
+      <div className={'topbar-controls' + (open ? ' is-open' : '')}>
+        <TextSize />
+        <LangToggle />
+      </div>
+    </div>
+  );
+}
+
 export default function TopBar({ screen, go }: TopBarProps) {
   const { t } = useI18n();
 
@@ -89,7 +132,7 @@ export default function TopBar({ screen, go }: TopBarProps) {
           <span className="df-logo" aria-hidden="true">
             <Image src="/appicon/defroster-512x512.png" alt="" width={34} height={34} className="df-logo-img" />
           </span>
-          <span className="df-wordmark" style={{ fontSize: '1.32rem' }}>Defroster</span>
+          <span className="df-wordmark">Defroster</span>
         </button>
 
         <nav className="topnav" aria-label="Primary">
@@ -109,10 +152,7 @@ export default function TopBar({ screen, go }: TopBarProps) {
               </button>
             </>
           )}
-          <div className="topbar-controls">
-            <TextSize />
-            <LangToggle />
-          </div>
+          <HeaderControls />
         </nav>
       </div>
     </header>

@@ -1,264 +1,8 @@
-@import "tailwindcss";
-
 /* ============================================================
-   DEFROSTER — "Thaw" design system
-   A calm, warm, high-contrast, accessible safety identity.
-   Concept: Defroster melts ICE. Warmth + dawn + community shelter
-   against cold institutional threat.
+   DEFROSTER — component styles
    ============================================================ */
 
-/* ---- Fonts (loaded via next/font in app/[locale]/layout.tsx) ----
-   Display : Bricolage Grotesque  (warm humanist grotesque)
-   UI/Body : Public Sans          (US civic accessibility face)
-   Mono    : Spline Sans Mono     (live data / coords / time)
-*/
-
-:root {
-  /* ---------- Palette: warm paper + ink ---------- */
-  --paper:        #FBF7F1;   /* page background, warm off-white */
-  --paper-2:      #F5EFE6;   /* sunken warm */
-  --surface:      #FFFFFF;
-  --surface-2:    #FBF8F3;
-  --ink:          #1C1815;   /* near-black, warm */
-  --ink-2:        #5A5048;   /* muted body */
-  --ink-3:        #8B8077;   /* faint / meta */
-  --line:         #ECE3D6;   /* warm hairline */
-  --line-2:       #E0D5C4;   /* stronger border */
-
-  /* ---------- Brand ---------- */
-  --pine:         #135C46;   /* primary: safe / trust / shelter */
-  --pine-600:     #15694F;
-  --pine-700:     #0F4B39;
-  --pine-tint:    #E7F1EC;   /* soft green wash */
-  --ember:        #E5602A;   /* accent: defrost / dawn / energy */
-  --ember-600:    #D7531F;
-  --ember-tint:   #FCEDE3;
-
-  /* default --accent maps to brand primary */
-  --accent:       var(--pine);
-  --accent-600:   var(--pine-600);
-  --accent-700:   var(--pine-700);
-  --accent-tint:  var(--pine-tint);
-
-  /* ---------- Signal colors (sighting types) ---------- */
-  --ice:          #CF1F33;   /* alert red */
-  --ice-tint:     #FBE9EB;
-  --ice-ink:      #8E1422;
-
-  --army:         #B26B07;   /* ochre / amber */
-  --army-tint:    #FBF0DC;
-  --army-ink:     #784707;
-
-  --police:       #2D54C8;   /* blue */
-  --police-tint:  #E7ECFB;
-  --police-ink:   #1E3A8F;
-
-  /* ---------- Status ---------- */
-  --ok:           #137A4F;
-  --ok-tint:      #E5F2EA;
-  --warn:         #B26B07;
-  --warn-tint:    #FBF0DC;
-
-  /* ---------- Radius ---------- */
-  --r-xs: 8px;
-  --r-sm: 12px;
-  --r-md: 16px;
-  --r-lg: 22px;
-  --r-xl: 30px;
-  --r-pill: 999px;
-
-  /* ---------- Elevation (calm, soft) ---------- */
-  --shadow-xs: 0 1px 2px rgba(28,24,21,.05);
-  --shadow-sm: 0 1px 2px rgba(28,24,21,.06), 0 4px 12px -6px rgba(28,24,21,.10);
-  --shadow-md: 0 2px 4px rgba(28,24,21,.06), 0 12px 28px -12px rgba(28,24,21,.18);
-  --shadow-lg: 0 8px 18px -6px rgba(28,24,21,.12), 0 30px 60px -24px rgba(28,24,21,.30);
-  --ring: 0 0 0 3px rgba(229,96,42,.38);   /* ember focus ring */
-
-  /* ---------- Type families ---------- */
-  --font-display: var(--font-bricolage), "Public Sans", system-ui, sans-serif;
-  --font-sans: var(--font-public-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: var(--font-spline-mono), ui-monospace, "SF Mono", Menlo, monospace;
-
-  /* ---------- Type scale (accessible: large, generous) ---------- */
-  /* scaled by --text-scale for the accessibility size control */
-  --text-scale: 1;
-  --t-mega:   clamp(2.4rem, 6vw, 3.6rem);
-  --t-h1:     clamp(1.85rem, 4.4vw, 2.6rem);
-  --t-h2:     clamp(1.4rem, 3vw, 1.85rem);
-  --t-h3:     1.3rem;
-  --t-lg:     1.18rem;
-  --t-body:   1.0625rem;   /* 17px base */
-  --t-sm:     0.95rem;
-  --t-xs:     0.82rem;
-
-  --lh-tight: 1.1;
-  --lh-snug: 1.3;
-  --lh-body: 1.62;
-
-  /* ---------- Spacing (4-base) ---------- */
-  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
-  --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px;
-  --s12: 48px; --s16: 64px; --s20: 80px;
-
-  --maxw: 1180px;
-  --maxw-read: 720px;
-}
-
-* { box-sizing: border-box; }
-
-html { -webkit-text-size-adjust: 100%; }
-
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: calc(var(--t-body) * var(--text-scale));
-  line-height: var(--lh-body);
-  color: var(--ink);
-  background: var(--paper);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-/* font-feature niceties */
-body { font-feature-settings: "ss01", "cv05"; }
-
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  line-height: var(--lh-tight);
-  letter-spacing: -0.01em;
-  margin: 0;
-  color: var(--ink);
-  font-weight: 700;
-}
-
-p { margin: 0; }
-a { color: var(--accent-600); text-decoration: none; }
-a:hover { text-decoration: underline; }
-
-button { font-family: inherit; }
-
-/* Accessibility: visible focus everywhere */
-:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
-  border-radius: var(--r-xs);
-}
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
-}
-
-/* ============================================================
-   Reusable primitives
-   ============================================================ */
-
-.df-shell { min-height: 100%; }
-
-.wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 var(--s5); }
-.read { max-width: var(--maxw-read); margin-inline: auto; }
-
-/* ---- Buttons ---- */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  gap: var(--s2);
-  font-family: var(--font-sans);
-  font-weight: 700;
-  font-size: calc(1.0625rem * var(--text-scale));
-  line-height: 1;
-  border: none; cursor: pointer;
-  border-radius: var(--r-pill);
-  padding: 0 var(--s6);
-  min-height: 56px;             /* large tap target */
-  transition: transform .15s ease, background .2s ease, box-shadow .2s ease;
-  text-decoration: none;
-}
-.btn:active { transform: translateY(1px) scale(.995); }
-.btn-primary {
-  background: var(--accent); color: #fff;
-  box-shadow: var(--shadow-sm);
-}
-.btn-primary:hover { background: var(--accent-600); text-decoration: none; }
-.btn-ember { background: var(--ember); color: #fff; box-shadow: var(--shadow-sm); }
-.btn-ember:hover { background: var(--ember-600); }
-.btn-ghost {
-  background: var(--surface); color: var(--ink);
-  border: 1.5px solid var(--line-2);
-}
-.btn-ghost:hover { background: var(--surface-2); text-decoration: none; }
-.btn-block { width: 100%; }
-.btn-lg { min-height: 62px; font-size: calc(1.18rem * var(--text-scale)); padding: 0 var(--s8); }
-.btn:disabled { opacity: .55; cursor: default; }
-
-/* ---- Cards ---- */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
-}
-.card-flat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); }
-
-/* ---- Chips / pills ---- */
-.chip {
-  display: inline-flex; align-items: center; gap: var(--s2);
-  font-size: calc(var(--t-sm) * var(--text-scale));
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: var(--r-pill);
-  background: var(--paper-2);
-  color: var(--ink-2);
-  border: 1px solid var(--line);
-}
-
-/* ---- Sighting type tokens helper classes ---- */
-.sig-ice    { --sig: var(--ice);    --sig-tint: var(--ice-tint);    --sig-ink: var(--ice-ink); }
-.sig-army   { --sig: var(--army);   --sig-tint: var(--army-tint);   --sig-ink: var(--army-ink); }
-.sig-police { --sig: var(--police); --sig-tint: var(--police-tint); --sig-ink: var(--police-ink); }
-
-.sig-label {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-weight: 800;
-  font-size: calc(var(--t-sm) * var(--text-scale));
-  letter-spacing: .02em;
-  padding: 7px 14px 7px 11px;
-  border-radius: var(--r-pill);
-  background: var(--sig-tint);
-  color: var(--sig-ink);
-  border: 1.5px solid color-mix(in srgb, var(--sig) 30%, transparent);
-  white-space: nowrap;
-}
-.sig-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--sig); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sig) 22%, transparent); }
-
-/* sr-only */
-.sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
-}
-
-/* eyebrow */
-.eyebrow {
-  font-family: var(--font-sans);
-  font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-  font-size: calc(.78rem * var(--text-scale)); color: var(--accent-600);
-}
-
-/* divider */
-.hr { height: 1px; background: var(--line); border: 0; margin: 0; }
-
-/* skip-to-content link */
-.skip-link {
-  position: absolute; left: 50%; top: 8px;
-  transform: translateX(-50%) translateY(-200%);
-  background: var(--surface); color: var(--ink); border: 1px solid var(--line-2);
-  padding: 10px 18px; border-radius: var(--r-pill); font-weight: 700; z-index: 200;
-  box-shadow: var(--shadow-md);
-}
-.skip-link:focus { transform: translateX(-50%) translateY(0); text-decoration: none; }
-
-/* ============================================================
-   Top bar
-   ============================================================ */
+/* ---------------- Top bar ---------------- */
 .topbar {
   position: sticky; top: 0; z-index: 50;
   background: color-mix(in srgb, var(--paper) 86%, transparent);
@@ -396,7 +140,6 @@ button { font-family: inherit; }
 .onb-story-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(24px, 3vw, 40px); box-shadow: var(--shadow-sm); }
 .onb-story-p { color: var(--ink-2); line-height: var(--lh-body); margin-top: 16px; }
 .onb-story-p:first-of-type { margin-top: 20px; }
-.onb-error { background: var(--ice-tint); border: 1px solid color-mix(in srgb, var(--ice) 30%, transparent); color: var(--ice-ink); border-radius: var(--r-sm); padding: 12px 14px; margin-top: 14px; font-weight: 600; font-size: calc(var(--t-sm) * var(--text-scale)); }
 
 /* ============================================================
    MAIN APP
@@ -406,7 +149,6 @@ button { font-family: inherit; }
 .app-title { font-size: var(--t-h1); font-weight: 800; letter-spacing: -0.02em; }
 .app-status { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
 .chip-ok { background: var(--ok-tint); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 22%, transparent); }
-.chip-warn { background: var(--warn-tint); color: var(--army-ink); border-color: color-mix(in srgb, var(--warn) 26%, transparent); }
 .live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); animation: pulse 2.4s infinite; }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 50%, transparent); } 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 .app-radius { color: var(--ink-3); font-size: calc(var(--t-sm) * var(--text-scale)); }
@@ -497,7 +239,6 @@ button { font-family: inherit; }
 .done-mark { width: 84px; height: 84px; border-radius: 50%; background: var(--ok-tint); color: var(--ok); display: grid; place-items: center; margin-bottom: 6px; animation: pop .35s cubic-bezier(.2,1.3,.4,1); }
 @keyframes pop { from { transform: scale(.7); opacity: 0; } }
 .sheet-done .btn { margin-top: 14px; }
-.sheet-error { background: var(--ice-tint); border: 1px solid color-mix(in srgb, var(--ice) 30%, transparent); color: var(--ice-ink); border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 16px; font-weight: 600; font-size: calc(var(--t-sm) * var(--text-scale)); }
 
 /* ============================================================
    GUIDE
@@ -583,13 +324,6 @@ button { font-family: inherit; }
 .g-takeaway svg { flex: none; color: var(--ember); }
 .g-takeaway p { font-family: var(--font-display); font-weight: 600; font-size: var(--t-lg); line-height: 1.4; }
 .g-guide-cta { text-align: center; }
-
-/* ============================================================
-   Loading
-   ============================================================ */
-.loading-screen { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
-.spinner { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite; margin: 0 auto 16px; }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ============================================================
    RESPONSIVE

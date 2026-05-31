@@ -7,30 +7,36 @@ const renderWithI18n = (component: React.ReactElement) => {
   return render(<I18nProvider>{component}</I18nProvider>);
 };
 
-describe('LocationPermission', () => {
+describe('LocationPermission (onboarding)', () => {
   let mockRequestPermission: jest.Mock;
 
   beforeEach(() => {
     mockRequestPermission = jest.fn();
   });
 
-  it('should render permission request UI', () => {
+  it('should render the onboarding hero and permission CTA', () => {
     renderWithI18n(<LocationPermission onRequestPermission={mockRequestPermission} />);
 
-    expect(screen.getByText(/enable location access/i)).toBeInTheDocument();
-    expect(screen.getByText(/needs access to your location/i)).toBeInTheDocument();
+    expect(screen.getByText(/Know when ICE, the Army, or police are nearby/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /turn on location to begin/i })).toBeInTheDocument();
+  });
+
+  it('should invoke onOpenGuide when the rights link is clicked', () => {
+    const onOpenGuide = jest.fn();
+    renderWithI18n(
+      <LocationPermission onRequestPermission={mockRequestPermission} onOpenGuide={onOpenGuide} />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /know your rights/i }));
+    expect(onOpenGuide).toHaveBeenCalledTimes(1);
   });
 
   it('should call onRequestPermission when button clicked', async () => {
-    mockRequestPermission.mockResolvedValue({
-      latitude: 37.7749,
-      longitude: -122.4194,
-    });
+    mockRequestPermission.mockResolvedValue({ latitude: 37.7749, longitude: -122.4194 });
 
     renderWithI18n(<LocationPermission onRequestPermission={mockRequestPermission} />);
 
-    const button = screen.getByRole('button', { name: /enable location/i });
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button', { name: /turn on location to begin/i }));
 
     await waitFor(() => {
       expect(mockRequestPermission).toHaveBeenCalledTimes(1);
@@ -38,24 +44,20 @@ describe('LocationPermission', () => {
   });
 
   it('should show loading state during permission request', async () => {
-    let resolvePermission: (value: any) => void;
+    let resolvePermission: (value: unknown) => void;
     const permissionPromise = new Promise((resolve) => {
       resolvePermission = resolve;
     });
-
     mockRequestPermission.mockReturnValue(permissionPromise);
 
     renderWithI18n(<LocationPermission onRequestPermission={mockRequestPermission} />);
 
-    const button = screen.getByRole('button', { name: /enable location/i });
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button', { name: /turn on location to begin/i }));
 
-    // Should show loading state
     await waitFor(() => {
-      expect(screen.getByText(/getting location/i)).toBeInTheDocument();
+      expect(screen.getByText(/getting your location/i)).toBeInTheDocument();
     });
 
-    // Resolve the permission
     resolvePermission!({ latitude: 37.7749, longitude: -122.4194 });
   });
 
@@ -64,8 +66,7 @@ describe('LocationPermission', () => {
 
     renderWithI18n(<LocationPermission onRequestPermission={mockRequestPermission} />);
 
-    const button = screen.getByRole('button', { name: /enable location/i });
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button', { name: /turn on location to begin/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/failed to get location/i)).toBeInTheDocument();
@@ -77,8 +78,7 @@ describe('LocationPermission', () => {
 
     renderWithI18n(<LocationPermission onRequestPermission={mockRequestPermission} />);
 
-    const button = screen.getByRole('button', { name: /enable location/i });
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button', { name: /turn on location to begin/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/permission denied/i)).toBeInTheDocument();
@@ -92,18 +92,14 @@ describe('LocationPermission', () => {
 
     renderWithI18n(<LocationPermission onRequestPermission={mockRequestPermission} />);
 
-    const button = screen.getByRole('button', { name: /enable location/i });
+    const button = screen.getByRole('button', { name: /turn on location to begin/i });
 
-    // First attempt fails
     fireEvent.click(button);
-
     await waitFor(() => {
       expect(screen.getByText(/permission denied/i)).toBeInTheDocument();
     });
 
-    // Second attempt succeeds
     fireEvent.click(button);
-
     await waitFor(() => {
       expect(mockRequestPermission).toHaveBeenCalledTimes(2);
     });

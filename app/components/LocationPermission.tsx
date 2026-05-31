@@ -1,166 +1,207 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useI18n } from '@/lib/contexts/I18nContext';
-import ImmigrationGuide from './ImmigrationGuide';
+import { Apple, Book, Check, Eye, Home, Lock, Pin, Plus, Share, ICON_MAP } from './Icons';
 
 interface LocationPermissionProps {
   onRequestPermission: () => Promise<{ latitude: number; longitude: number } | null>;
+  /** Navigate to the Know Your Rights guide (optional in isolated tests). */
+  onOpenGuide?: () => void;
 }
 
-export default function LocationPermission({ onRequestPermission }: LocationPermissionProps) {
+type IosCopy = {
+  badge: string;
+  title: string;
+  required: string;
+  steps: string[][];
+  location: string;
+  locationServicesText: string;
+  locationServicesUrl: string;
+  homeScreenText: string;
+  homeScreenUrl: string;
+};
+
+/** Renders a sentence with {placeholder} links, each emphasized. */
+function LinkSentence({ text, links }: { text: string; links: Record<string, { label: string; url: string }> }) {
+  const parts = text.split(/(\{[a-zA-Z]+\})/g);
+  return (
+    <>
+      {parts.map((p, i) => {
+        const m = p.match(/^\{([a-zA-Z]+)\}$/);
+        if (m && links[m[1]]) {
+          const { label, url } = links[m[1]];
+          return (
+            <a key={i} className="ios-link" href={url} target="_blank" rel="noopener noreferrer">
+              {label}
+            </a>
+          );
+        }
+        return <Fragment key={i}>{p}</Fragment>;
+      })}
+    </>
+  );
+}
+
+const STEP_ICONS: Record<string, (p: { size?: number }) => React.JSX.Element> = {
+  share: Share,
+  plus: Plus,
+  home: Home,
+};
+
+function IOSCallout({ ios }: { ios: IosCopy }) {
+  const requiredParts = ios.required.split('—');
+  return (
+    <aside className="ios-callout" aria-label={ios.badge}>
+      <div className="ios-badge"><Apple size={16} /> {ios.badge}</div>
+      <h3 className="ios-title"><Home size={22} /> {ios.title}</h3>
+
+      <p className="ios-required">
+        <span className="ios-required-flag">{requiredParts[0].trim()}</span>
+        {requiredParts.length > 1 ? requiredParts.slice(1).join('—') : ''}
+      </p>
+
+      <ol className="ios-steps">
+        {ios.steps.map((step, i) => {
+          const [pre, em, post, ico] = step;
+          const Ico = STEP_ICONS[ico] || Plus;
+          return (
+            <li key={i} className="ios-step">
+              <span className="ios-step-n">{i + 1}</span>
+              <span className="ios-step-ico"><Ico size={18} /></span>
+              <span className="ios-step-txt">{pre} <strong>{em}</strong>{post ? ' ' + post : ''}</span>
+            </li>
+          );
+        })}
+      </ol>
+
+      <p className="ios-loc">
+        <LinkSentence
+          text={ios.location}
+          links={{
+            locationServicesLink: { label: ios.locationServicesText, url: ios.locationServicesUrl },
+            homeScreenLink: { label: ios.homeScreenText, url: ios.homeScreenUrl },
+          }}
+        />
+      </p>
+    </aside>
+  );
+}
+
+export default function LocationPermission({ onRequestPermission, onOpenGuide }: LocationPermissionProps) {
   const { t } = useI18n();
+  const o = t.onboarding;
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [showStory, setShowStory] = useState(false);
+  const [showIosCallout, setShowIosCallout] = useState(false);
+  const storyRef = useRef<HTMLElement>(null);
+
+  // When the story is revealed, scroll it into view.
+  useEffect(() => {
+    if (showStory) {
+      storyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showStory]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream;
-      setIsIOS(ios);
-    }
+    if (typeof window === 'undefined') return;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as Window & { MSStream?: unknown }).MSStream;
+    const isStandalone =
+      (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) ||
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    setShowIosCallout(isIOS && !isStandalone);
   }, []);
 
   const handleRequestPermission = async () => {
     setLoading(true);
     setError(null);
-
     try {
       const location = await onRequestPermission();
-
       if (!location) {
         throw new Error('Failed to get location');
       }
-
       setLoading(false);
-      // No need to call callback - parent hook will update
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get location';
-      setError(errorMessage);
+      const message = err instanceof Error ? err.message : 'Failed to get location';
+      setError(message);
       setLoading(false);
     }
   };
 
-  console.log('LocationPermission render:', { loading, error });
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-3xl w-full space-y-6">
-        {/* Introductory Story */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="prose prose-sm max-w-none">
-            <p className="text-gray-700 leading-relaxed mb-4">
-              {t.locationPermission.story.paragraph1}
-            </p>
-            <p className="text-gray-700 leading-relaxed">
-              {t.locationPermission.story.paragraph2.split('{appName}')[0]}
-              <strong className="text-blue-700">{t.app.name}</strong>
-              {t.locationPermission.story.paragraph2.split('{appName}')[1].split('{openSourceLink}')[0]}
-              <a href="https://github.com/erichchampion/defroster" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
-                {t.locationPermission.story.openSourceText}
-              </a>
-              {t.locationPermission.story.paragraph2.split('{openSourceLink}')[1]}
-            </p>
-          </div>
-        </div>
-
-        {/* Location Permission Card */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
+    <main className="onb">
+      {/* Hero */}
+      <section className="onb-hero">
+        <div className="wrap onb-hero-inner">
+          <div className="onb-hero-copy">
+            <div className="onb-brandmark">
+              <Image src="/appicon/defroster-512x512.png" alt="Defroster app icon" width={60} height={60} className="onb-brandmark-img" />
+              <span className="df-wordmark" style={{ fontSize: '1.5rem' }}>Defroster</span>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t.locationPermission.heading}</h2>
-            <p className="text-gray-600 mb-4">
-              {t.locationPermission.description}
-            </p>
-            {isIOS && (
-              <p className="text-gray-600">
-                {t.locationPermission.iosInstructions.split('{locationServicesLink}')[0]}
-                <a
-                  href={t.locationPermission.locationServicesUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 underline"
-                >
-                  {t.locationPermission.locationServicesText}
-                </a>
-                {t.locationPermission.iosInstructions.split('{locationServicesLink}')[1].split('{homeScreenLink}')[0]}
-                <a
-                  href={t.locationPermission.homeScreenUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 underline"
-                >
-                  {t.locationPermission.homeScreenText}
-                </a>
-                {t.locationPermission.iosInstructions.split('{homeScreenLink}')[1]}
-              </p>
-            )}
-          </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-800">{error}</p>
-          </div>
-        )}
-
-        <button
-          onClick={handleRequestPermission}
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? t.locationPermission.buttonLoading : t.locationPermission.buttonEnable}
-        </button>
-
-          <div className="mt-6 p-4 bg-gray-50 rounded-md">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">{t.locationPermission.privacyNotice.heading}</h3>
-            <ul className="text-xs text-gray-600 space-y-1">
-              <li>• {t.locationPermission.privacyNotice.locationUsage}</li>
-              <li>• {t.locationPermission.privacyNotice.serverDeletion}</li>
-              <li>• {t.locationPermission.privacyNotice.localDeletion}</li>
-              <li>• {t.locationPermission.privacyNotice.locationRandomization}</li>
-              <li>• {t.locationPermission.privacyNotice.noPersonalData}</li>
-              <li>• {t.locationPermission.privacyNotice.revokeAccess}</li>
+            <span className="eyebrow">{o.eyebrow}</span>
+            <h1 className="onb-title">{o.title}</h1>
+            <p className="onb-sub">{o.sub}</p>
+            <ul className="onb-trust" aria-label="Privacy summary">
+              {o.trust.map((x, i) => (
+                <li key={i} className="onb-trust-item"><Check size={18} /> {x}</li>
+              ))}
             </ul>
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-sm text-gray-700">
-              <strong>{t.locationPermission.knowYourRights.heading}</strong> {t.locationPermission.knowYourRights.description}{' '}
-              <a
-                href={t.locationPermission.knowYourRights.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline"
-              >
-                {t.locationPermission.knowYourRights.url}
-              </a>
-            </p>
+          {/* Permission card + iOS requirement — the single decision */}
+          <div className="onb-card-col">
+            <div className="onb-card card">
+              <div className="onb-card-mark"><Pin size={30} /></div>
+              <h2 className="onb-card-title">{o.cta}</h2>
+              <p className="onb-card-note">{o.ctaNote}</p>
+              <button className="btn btn-primary btn-lg btn-block" onClick={handleRequestPermission} disabled={loading}>
+                {loading ? o.ctaLoading : (<><Pin size={22} /> {o.cta}</>)}
+              </button>
+              {error && <p className="onb-error" role="alert">{error}</p>}
+              <div className="onb-card-links">
+                <button className="link-btn" onClick={() => onOpenGuide?.()}>
+                  <Book size={18} /> {o.secondaryRights}
+                </button>
+                <button className="link-btn" onClick={() => setShowStory((s) => !s)} aria-expanded={showStory}>
+                  <Eye size={18} /> {o.secondaryStory}
+                </button>
+              </div>
+            </div>
+
+            {showIosCallout && <IOSCallout ios={o.ios} />}
           </div>
         </div>
+      </section>
 
-        {/* Immigration Rights & Protection Guide */}
-        <ImmigrationGuide />
-      </div>
-    </div>
+      {/* Privacy reassurance */}
+      <section className="wrap onb-privacy">
+        <h2 className="onb-section-title">{o.privacyTitle}</h2>
+        <ul className="onb-priv-grid">
+          {o.privacy.map((row, i) => {
+            const [label, key] = row;
+            const Ico = ICON_MAP[key] || Lock;
+            return (
+              <li key={i} className="onb-priv-item">
+                <span className="onb-priv-ico"><Ico size={22} /></span>
+                <span>{label}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* Expandable story */}
+      {showStory && (
+        <section ref={storyRef} className="wrap onb-story">
+          <div className="onb-story-card read">
+            <h2 className="onb-section-title">{o.storyTitle}</h2>
+            <p className="onb-story-p">{o.story1}</p>
+            <p className="onb-story-p">{o.story2}</p>
+          </div>
+        </section>
+      )}
+    </main>
   );
 }

@@ -619,11 +619,10 @@ button { font-family: inherit; }
   .report-dock { display: block; }
   .warrant-compare { grid-template-columns: 1fr; }
 }
-@media (max-width: 560px) {
-  .df-wordmark { font-size: 1.15rem; }
-  .topnav { gap: 10px; }
-  .nav-link { font-size: .92rem; }
-  /* Collapse text-size + language controls behind the "⋯" menu */
+/* Collapse text-size + language controls behind the "⋯" menu before the full
+   inline header would overflow. The threshold accounts for the longer Spanish
+   nav labels ("Conoce tus derechos") so it never overlaps in either locale. */
+@media (max-width: 768px) {
   .topbar-menu-btn { display: inline-flex; }
   .topbar-controls {
     display: none; position: absolute; top: calc(100% + 6px); right: 0;
@@ -634,6 +633,11 @@ button { font-family: inherit; }
   .topbar-controls.is-open { display: flex; }
   .topbar-controls .seg { width: 100%; }
   .topbar-controls .seg-btn { flex: 1; }
+}
+@media (max-width: 560px) {
+  .df-wordmark { font-size: 1.15rem; }
+  .topnav { gap: 10px; }
+  .nav-link { font-size: .92rem; }
   .onb-priv-grid { grid-template-columns: 1fr; }
   .app-head { align-items: flex-start; }
   .notif-banner { flex-wrap: wrap; }

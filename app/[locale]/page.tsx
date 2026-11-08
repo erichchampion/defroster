@@ -24,7 +24,7 @@ import {
   OLD_MESSAGE_CLEANUP_INTERVAL_MS
 } from '@/lib/constants/time';
 
-// Dynamically import the map component to avoid SSR issues with Leaflet
+// Dynamically import the map component to avoid SSR issues with MapLibre GL
 const SightingMap = dynamic(() => import('@/app/components/SightingMap'), {
   ssr: false,
 });

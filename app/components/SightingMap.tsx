@@ -1,29 +1,26 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import maplibregl from 'maplibre-gl';
+import type { FeatureCollection } from 'geojson';
 import { Message, GeoLocation, SightingType } from '@/lib/types/message';
 import { formatRelativeTimeI18n } from '@/lib/utils/time-formatter-i18n';
 import { getSightingColor, getSightingSigClass } from '@/lib/constants/colors';
-import { DEFAULT_RADIUS_METERS, LEAFLET_CDN_BASE, buildCartoTileUrl } from '@/lib/constants/app';
+import { DEFAULT_RADIUS_METERS, buildCartoVectorStyleUrl } from '@/lib/constants/app';
 import { useI18n } from '@/lib/contexts/I18nContext';
-import 'leaflet/dist/leaflet.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
-// Fix for default marker icons in Next.js
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: `${LEAFLET_CDN_BASE}/images/marker-icon-2x.png`,
-  iconUrl: `${LEAFLET_CDN_BASE}/images/marker-icon.png`,
-  shadowUrl: `${LEAFLET_CDN_BASE}/images/marker-shadow.png`,
-});
+type Translations = ReturnType<typeof useI18n>['t'];
 
 // CARTO requires a free basemaps API key since 25 September 2026.
 const CARTO_BASEMAPS_KEY = process.env.NEXT_PUBLIC_CARTO_BASEMAPS_KEY;
 if (!CARTO_BASEMAPS_KEY && process.env.NODE_ENV === 'development') {
   console.warn('Map tiles need NEXT_PUBLIC_CARTO_BASEMAPS_KEY — get a free one at https://carto.com/basemaps/apikey');
 }
+
+const MAP_ZOOM = 13;
+const CIRCLE_STEPS = 64;
+const RADIUS_COLOR = '#135C46';
 
 /**
  * Calculate opacity based on message age
@@ -40,38 +37,80 @@ const getOpacityForAge = (timestamp: number): number => {
 };
 
 /** Teardrop "thaw" pin tinted with the signal color — no emoji. */
-const getIconForSightingType = (type: SightingType, timestamp: number): L.DivIcon => {
-  const color = getSightingColor(type);
-  const opacity = getOpacityForAge(timestamp);
-  return L.divIcon({
-    className: '',
-    html: `<span class="pin" style="--pc:${color};opacity:${opacity}"></span>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-    popupAnchor: [0, -24],
-  });
+const createSightingMarkerElement = (type: SightingType, timestamp: number): HTMLElement => {
+  const el = document.createElement('span');
+  el.className = 'pin';
+  el.style.setProperty('--pc', getSightingColor(type));
+  el.style.opacity = String(getOpacityForAge(timestamp));
+  return el;
 };
 
 /** Accent dot with a halo for the user's own location. */
-const userIcon = (): L.DivIcon =>
-  L.divIcon({
-    className: '',
-    html: '<span class="you-dot"></span>',
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-  });
+const createUserMarkerElement = (): HTMLElement => {
+  const el = document.createElement('span');
+  el.className = 'you-dot';
+  return el;
+};
 
-interface MapRecenterProps {
-  center: [number, number];
-}
+const createYourLocationContent = (label: string): HTMLElement => {
+  const wrapper = document.createElement('div');
+  wrapper.style.textAlign = 'center';
+  const strong = document.createElement('strong');
+  strong.textContent = label;
+  wrapper.appendChild(strong);
+  return wrapper;
+};
 
-function MapRecenter({ center }: MapRecenterProps) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, map.getZoom());
-  }, [center, map]);
-  return null;
-}
+const createSightingPopupContent = (message: Message, t: Translations): HTMLElement => {
+  const wrapper = document.createElement('div');
+  wrapper.className = getSightingSigClass(message.sightingType);
+  wrapper.style.minWidth = '150px';
+
+  const label = document.createElement('span');
+  label.className = 'sig-label';
+  const dot = document.createElement('span');
+  dot.className = 'sig-dot';
+  label.appendChild(dot);
+  label.appendChild(document.createTextNode(t.report.types[message.sightingType].label));
+
+  const time = document.createElement('p');
+  time.className = 'mono';
+  time.style.marginTop = '6px';
+  time.style.color = '#5A5048';
+  time.style.fontSize = '12px';
+  time.textContent = formatRelativeTimeI18n(message.timestamp, t);
+
+  wrapper.append(label, time);
+  return wrapper;
+};
+
+/**
+ * Approximate a radius circle as a GeoJSON polygon.
+ * Equirectangular projection is fine at city scale (a few miles).
+ */
+const createCirclePolygon = (center: [number, number], radiusMeters: number): FeatureCollection => {
+  const [lng, lat] = center;
+  const latRad = (lat * Math.PI) / 180;
+  const ring: Array<[number, number]> = [];
+
+  for (let i = 0; i <= CIRCLE_STEPS; i += 1) {
+    const theta = (i / CIRCLE_STEPS) * 2 * Math.PI;
+    const dLng = (radiusMeters * Math.cos(theta)) / (111_320 * Math.cos(latRad));
+    const dLat = (radiusMeters * Math.sin(theta)) / 110_540;
+    ring.push([lng + dLng, lat + dLat]);
+  }
+
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'Polygon', coordinates: [ring] },
+      },
+    ],
+  };
+};
 
 interface SightingMapProps {
   messages: Message[];
@@ -80,76 +119,129 @@ interface SightingMapProps {
 
 export default function SightingMap({ messages, currentLocation }: SightingMapProps) {
   const { t } = useI18n();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const sightingMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const circleSourceRef = useRef<maplibregl.GeoJSONSource | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  // MapLibre uses [longitude, latitude] order
   const center: [number, number] = useMemo(
-    () => [currentLocation.latitude, currentLocation.longitude],
+    () => [currentLocation.longitude, currentLocation.latitude],
     [currentLocation]
   );
 
-  // Memoize message markers to avoid recreating icons on every render
-  const messageMarkers = useMemo(() => {
-    return messages.map((message) => ({
-      ...message,
-      icon: getIconForSightingType(message.sightingType, message.timestamp),
-    }));
-  }, [messages]);
+  // Create the map once; recentering and marker updates are handled below.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
 
-  return (
-    <div className="leaflet-host">
-      <MapContainer
-        center={center}
-        zoom={13}
-        style={{ height: '100%', width: '100%' }}
-        scrollWheelZoom={false}
-      >
-        <MapRecenter center={center} />
+    const map = new maplibregl.Map({
+      container,
+      style: buildCartoVectorStyleUrl(CARTO_BASEMAPS_KEY),
+      center,
+      zoom: MAP_ZOOM,
+      attributionControl: {
+        customAttribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      },
+    });
+    mapRef.current = map;
 
-        {/* Calm CARTO Positron basemap */}
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url={buildCartoTileUrl(CARTO_BASEMAPS_KEY)}
-        />
+    map.on('load', () => {
+      // Parity with the previous Leaflet config: avoid hijacking page scroll
+      map.scrollZoom.disable();
 
-        {/* Search radius */}
-        <Circle
-          center={center}
-          radius={DEFAULT_RADIUS_METERS}
-          pathOptions={{
-            color: '#135C46',
-            fillColor: '#135C46',
-            fillOpacity: 0.06,
-            weight: 1.5,
-            opacity: 0.5,
-            dashArray: '5 6',
-          }}
-        />
+      map.addSource('search-radius', {
+        type: 'geojson',
+        data: createCirclePolygon(center, DEFAULT_RADIUS_METERS),
+      });
+      map.addLayer({
+        id: 'search-radius-fill',
+        type: 'fill',
+        source: 'search-radius',
+        paint: { 'fill-color': RADIUS_COLOR, 'fill-opacity': 0.06 },
+      });
+      map.addLayer({
+        id: 'search-radius-outline',
+        type: 'line',
+        source: 'search-radius',
+        paint: {
+          'line-color': RADIUS_COLOR,
+          'line-width': 1.5,
+          'line-opacity': 0.5,
+          'line-dasharray': [5, 6],
+        },
+      });
+      circleSourceRef.current = map.getSource('search-radius') as maplibregl.GeoJSONSource;
 
-        {/* Current location marker */}
-        <Marker position={center} icon={userIcon()} zIndexOffset={1000}>
-          <Popup>
-            <div className="text-center">
-              <strong>{t.mainApp.yourLocation}</strong>
-            </div>
-          </Popup>
-        </Marker>
+      setMapReady(true);
+    });
 
-        {/* Sighting markers */}
-        {messageMarkers.map((marker) => (
-          <Marker
-            key={marker.id}
-            position={[marker.location.latitude, marker.location.longitude]}
-            icon={marker.icon}
-          >
-            <Popup>
-              <div className={getSightingSigClass(marker.sightingType)} style={{ minWidth: 150 }}>
-                <span className="sig-label"><span className="sig-dot" />{t.report.types[marker.sightingType].label}</span>
-                <p className="mono" style={{ marginTop: 6, color: '#5A5048', fontSize: 12 }}>
-                  {formatRelativeTimeI18n(marker.timestamp, t)}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
-    </div>
-  );
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      circleSourceRef.current = null;
+      userMarkerRef.current = null;
+      sightingMarkersRef.current = [];
+      setMapReady(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- created once; center changes handled by the recenter effect
+  }, []);
+
+  // Keep the user marker (and its popup) in sync with the i18n locale
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapReady || !map) return undefined;
+
+    const marker = new maplibregl.Marker({ element: createUserMarkerElement() })
+      .setLngLat(center)
+      .setPopup(
+        new maplibregl.Popup({ offset: 18 }).setDOMContent(createYourLocationContent(t.mainApp.yourLocation))
+      )
+      .addTo(map);
+    userMarkerRef.current = marker;
+
+    return () => {
+      marker.remove();
+      if (userMarkerRef.current === marker) userMarkerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- position updates handled by the recenter effect
+  }, [mapReady, t]);
+
+  // Sighting markers are rebuilt when the message set or locale changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapReady || !map) return undefined;
+
+    const markers = messages.map((message) =>
+      new maplibregl.Marker({
+        element: createSightingMarkerElement(message.sightingType, message.timestamp),
+        anchor: 'bottom',
+      })
+        .setLngLat([message.location.longitude, message.location.latitude])
+        .setPopup(
+          new maplibregl.Popup({ offset: 24 }).setDOMContent(createSightingPopupContent(message, t))
+        )
+        .addTo(map)
+    );
+    sightingMarkersRef.current = markers;
+
+    return () => {
+      markers.forEach((marker) => marker.remove());
+    };
+  }, [mapReady, messages, t]);
+
+  // Recentre the view, user marker, and search radius when the location changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapReady || !map) return;
+
+    map.jumpTo({ center });
+    userMarkerRef.current?.setLngLat(center);
+    circleSourceRef.current?.setData(createCirclePolygon(center, DEFAULT_RADIUS_METERS));
+  }, [mapReady, center]);
+
+  return <div className="map-host" ref={containerRef} />;
 }

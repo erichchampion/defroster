@@ -41,12 +41,10 @@ export const LOCATION_WATCH_OPTIONS: PositionOptions = {
   maximumAge: 300000, // 5 minutes - allow cached location
 };
 
-// Leaflet CDN
-export const LEAFLET_CDN_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4';
-
-// CARTO Basemaps raster tiles
+// CARTO Basemaps vector style (rendered with MapLibre GL)
 // CARTO requires a free API key since 25 September 2026 — https://carto.com/basemaps/apikey
-export const CARTO_TILE_URL_TEMPLATE = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+export const CARTO_VECTOR_STYLE_URL_TEMPLATE =
+  'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
-export const buildCartoTileUrl = (key?: string): string =>
-  key ? `${CARTO_TILE_URL_TEMPLATE}?key=${key}` : CARTO_TILE_URL_TEMPLATE;
+export const buildCartoVectorStyleUrl = (key?: string): string =>
+  key ? `${CARTO_VECTOR_STYLE_URL_TEMPLATE}?key=${key}` : CARTO_VECTOR_STYLE_URL_TEMPLATE;

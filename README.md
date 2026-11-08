@@ -440,7 +440,7 @@ curl -H "Accept-Language: fr-FR" http://localhost:3000/
 - **Backend**: Next.js API Routes (serverless)
 - **Database**: Firebase Firestore with geohash indexing
 - **Messaging**: Firebase Cloud Messaging (FCM)
-- **Maps**: Leaflet with CARTO Positron basemap tiles (OpenStreetMap data)
+- **Maps**: MapLibre GL with CARTO Positron vector basemaps (OpenStreetMap data)
 - **Caching**: IndexedDB (Dexie.js abstraction)
 - **Geospatial**: geofire-common for efficient radius queries
 
@@ -747,10 +747,10 @@ This platform is designed to be easily customized for different use cases:
 - ✅ Ensure HTTPS in production (required for service workers)
 
 ### Map not displaying
-- ✅ Tiles show "API KEY REQUIRED" instead of streets? CARTO requires a (free) tile API key since September 2026. Request one at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey), set `NEXT_PUBLIC_CARTO_BASEMAPS_KEY`, and redeploy. Hard-refresh after adding the key — placeholder tiles are cached by the browser.
-- ✅ Check console for Leaflet errors
+- ✅ Blank or grey map? CARTO basemaps require a (free) API key since September 2026. Request one at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey), set `NEXT_PUBLIC_CARTO_BASEMAPS_KEY`, and redeploy. Hard-refresh after adding the key — style and tile responses are cached by the browser.
+- ✅ Check console for MapLibre errors
 - ✅ Verify location permissions granted
-- ✅ Check network tab for tile loading errors
+- ✅ Check network tab for style/tile requests to `basemaps.cartocdn.com`
 
 ### Build errors
 ```bash
@@ -785,7 +785,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🙏 Acknowledgments
 
 - Built with [Next.js](https://nextjs.org/)
-- Maps powered by [Leaflet](https://leafletjs.com/), [CARTO Basemaps](https://carto.com/basemaps/), and [OpenStreetMap](https://www.openstreetmap.org/)
+- Maps powered by [MapLibre GL JS](https://maplibre.org/), [CARTO Basemaps](https://carto.com/basemaps/), and [OpenStreetMap](https://www.openstreetmap.org/)
 - Icons from [Heroicons](https://heroicons.com/)
 - Geospatial queries via [geofire-common](https://github.com/firebase/geofire-js)
 

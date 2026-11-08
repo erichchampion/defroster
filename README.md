@@ -87,7 +87,7 @@ Create `.env.local` from the example:
 cp .env.local.example .env.local
 ```
 
-Edit `.env.local` with your Firebase credentials:
+Edit `.env.local` with your Firebase and map tile credentials:
 
 ```bash
 # Firebase Web Configuration
@@ -99,6 +99,10 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
 NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-ABC123
 NEXT_PUBLIC_FIREBASE_VAPID_KEY=BN4bX... (from step 4 above)
+
+# CARTO Basemaps tile API key (REQUIRED for map tiles)
+# Free for non-commercial use: https://carto.com/basemaps/apikey
+NEXT_PUBLIC_CARTO_BASEMAPS_KEY=your_carto_basemaps_key_here
 
 # Base URL for origin validation (REQUIRED)
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
@@ -210,6 +214,7 @@ Open [http://localhost:3000](http://localhost:3000) and grant location permissio
    - Go to [vercel.com](https://vercel.com) and sign in with GitHub
    - Click "New Project" and import your repository
    - Add all environment variables from `.env.local`
+   - Make sure `NEXT_PUBLIC_CARTO_BASEMAPS_KEY` is included (required for map tiles)
    - Click "Deploy"
 
 3. **Configure Custom Domain** (Optional):
@@ -435,7 +440,7 @@ curl -H "Accept-Language: fr-FR" http://localhost:3000/
 - **Backend**: Next.js API Routes (serverless)
 - **Database**: Firebase Firestore with geohash indexing
 - **Messaging**: Firebase Cloud Messaging (FCM)
-- **Maps**: Leaflet with OpenStreetMap
+- **Maps**: Leaflet with CARTO Positron basemap tiles (OpenStreetMap data)
 - **Caching**: IndexedDB (Dexie.js abstraction)
 - **Geospatial**: geofire-common for efficient radius queries
 
@@ -742,6 +747,7 @@ This platform is designed to be easily customized for different use cases:
 - ✅ Ensure HTTPS in production (required for service workers)
 
 ### Map not displaying
+- ✅ Tiles show "API KEY REQUIRED" instead of streets? CARTO requires a (free) tile API key since September 2026. Request one at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey), set `NEXT_PUBLIC_CARTO_BASEMAPS_KEY`, and redeploy. Hard-refresh after adding the key — placeholder tiles are cached by the browser.
 - ✅ Check console for Leaflet errors
 - ✅ Verify location permissions granted
 - ✅ Check network tab for tile loading errors
@@ -779,7 +785,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🙏 Acknowledgments
 
 - Built with [Next.js](https://nextjs.org/)
-- Maps powered by [Leaflet](https://leafletjs.com/) and [OpenStreetMap](https://www.openstreetmap.org/)
+- Maps powered by [Leaflet](https://leafletjs.com/), [CARTO Basemaps](https://carto.com/basemaps/), and [OpenStreetMap](https://www.openstreetmap.org/)
 - Icons from [Heroicons](https://heroicons.com/)
 - Geospatial queries via [geofire-common](https://github.com/firebase/geofire-js)
 

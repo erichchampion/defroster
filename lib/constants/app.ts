@@ -43,3 +43,10 @@ export const LOCATION_WATCH_OPTIONS: PositionOptions = {
 
 // Leaflet CDN
 export const LEAFLET_CDN_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4';
+
+// CARTO Basemaps raster tiles
+// CARTO requires a free API key since 25 September 2026 — https://carto.com/basemaps/apikey
+export const CARTO_TILE_URL_TEMPLATE = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+export const buildCartoTileUrl = (key?: string): string =>
+  key ? `${CARTO_TILE_URL_TEMPLATE}?key=${key}` : CARTO_TILE_URL_TEMPLATE;

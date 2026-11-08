@@ -6,7 +6,7 @@ import L from 'leaflet';
 import { Message, GeoLocation, SightingType } from '@/lib/types/message';
 import { formatRelativeTimeI18n } from '@/lib/utils/time-formatter-i18n';
 import { getSightingColor, getSightingSigClass } from '@/lib/constants/colors';
-import { DEFAULT_RADIUS_METERS } from '@/lib/constants/app';
+import { DEFAULT_RADIUS_METERS, LEAFLET_CDN_BASE, buildCartoTileUrl } from '@/lib/constants/app';
 import { useI18n } from '@/lib/contexts/I18nContext';
 import 'leaflet/dist/leaflet.css';
 
@@ -14,10 +14,16 @@ import 'leaflet/dist/leaflet.css';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconRetinaUrl: `${LEAFLET_CDN_BASE}/images/marker-icon-2x.png`,
+  iconUrl: `${LEAFLET_CDN_BASE}/images/marker-icon.png`,
+  shadowUrl: `${LEAFLET_CDN_BASE}/images/marker-shadow.png`,
 });
+
+// CARTO requires a free basemaps API key since 25 September 2026.
+const CARTO_BASEMAPS_KEY = process.env.NEXT_PUBLIC_CARTO_BASEMAPS_KEY;
+if (!CARTO_BASEMAPS_KEY && process.env.NODE_ENV === 'development') {
+  console.warn('Map tiles need NEXT_PUBLIC_CARTO_BASEMAPS_KEY — get a free one at https://carto.com/basemaps/apikey');
+}
 
 /**
  * Calculate opacity based on message age
@@ -100,7 +106,7 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
         {/* Calm CARTO Positron basemap */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          url={buildCartoTileUrl(CARTO_BASEMAPS_KEY)}
         />
 
         {/* Search radius */}

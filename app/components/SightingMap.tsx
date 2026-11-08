@@ -21,6 +21,12 @@ if (!CARTO_BASEMAPS_KEY && process.env.NODE_ENV === 'development') {
 const MAP_ZOOM = 13;
 const CIRCLE_STEPS = 64;
 const RADIUS_COLOR = '#135C46';
+// Equirectangular meters-per-degree (fine at city scale)
+const METERS_PER_DEG_LAT = 110_540;
+const METERS_PER_DEG_LNG = 111_320;
+// Popups sit above the marker; tuned to the 18px user dot and 26px pin
+const USER_DOT_POPUP_OFFSET = 18;
+const PIN_POPUP_OFFSET = 24;
 
 /**
  * Calculate opacity based on message age
@@ -63,8 +69,7 @@ const createYourLocationContent = (label: string): HTMLElement => {
 
 const createSightingPopupContent = (message: Message, t: Translations): HTMLElement => {
   const wrapper = document.createElement('div');
-  wrapper.className = getSightingSigClass(message.sightingType);
-  wrapper.style.minWidth = '150px';
+  wrapper.className = `sig-popup ${getSightingSigClass(message.sightingType)}`;
 
   const label = document.createElement('span');
   label.className = 'sig-label';
@@ -75,9 +80,6 @@ const createSightingPopupContent = (message: Message, t: Translations): HTMLElem
 
   const time = document.createElement('p');
   time.className = 'mono';
-  time.style.marginTop = '6px';
-  time.style.color = '#5A5048';
-  time.style.fontSize = '12px';
   time.textContent = formatRelativeTimeI18n(message.timestamp, t);
 
   wrapper.append(label, time);
@@ -95,8 +97,8 @@ const createCirclePolygon = (center: [number, number], radiusMeters: number): Fe
 
   for (let i = 0; i <= CIRCLE_STEPS; i += 1) {
     const theta = (i / CIRCLE_STEPS) * 2 * Math.PI;
-    const dLng = (radiusMeters * Math.cos(theta)) / (111_320 * Math.cos(latRad));
-    const dLat = (radiusMeters * Math.sin(theta)) / 110_540;
+    const dLng = (radiusMeters * Math.cos(theta)) / (METERS_PER_DEG_LNG * Math.cos(latRad));
+    const dLat = (radiusMeters * Math.sin(theta)) / METERS_PER_DEG_LAT;
     ring.push([lng + dLng, lat + dLat]);
   }
 
@@ -122,8 +124,9 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
-  const sightingMarkersRef = useRef<maplibregl.Marker[]>([]);
   const circleSourceRef = useRef<maplibregl.GeoJSONSource | null>(null);
+  // Set once the user pans or zooms; afterwards the camera is theirs
+  const userMovedRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
 
   // MapLibre uses [longitude, latitude] order
@@ -156,6 +159,13 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
       // Parity with the previous Leaflet config: avoid hijacking page scroll
       map.scrollZoom.disable();
 
+      // Once the user pans or zooms, stop auto-recentring the camera
+      const markUserMoved = () => {
+        userMovedRef.current = true;
+      };
+      map.on('dragstart', markUserMoved);
+      map.on('zoomstart', markUserMoved);
+
       map.addSource('search-radius', {
         type: 'geojson',
         data: createCirclePolygon(center, DEFAULT_RADIUS_METERS),
@@ -187,7 +197,7 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
       mapRef.current = null;
       circleSourceRef.current = null;
       userMarkerRef.current = null;
-      sightingMarkersRef.current = [];
+      userMovedRef.current = false;
       setMapReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- created once; center changes handled by the recenter effect
@@ -201,7 +211,9 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
     const marker = new maplibregl.Marker({ element: createUserMarkerElement() })
       .setLngLat(center)
       .setPopup(
-        new maplibregl.Popup({ offset: 18 }).setDOMContent(createYourLocationContent(t.mainApp.yourLocation))
+        new maplibregl.Popup({ offset: USER_DOT_POPUP_OFFSET }).setDOMContent(
+          createYourLocationContent(t.mainApp.yourLocation)
+        )
       )
       .addTo(map);
     userMarkerRef.current = marker;
@@ -225,23 +237,26 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
       })
         .setLngLat([message.location.longitude, message.location.latitude])
         .setPopup(
-          new maplibregl.Popup({ offset: 24 }).setDOMContent(createSightingPopupContent(message, t))
+          new maplibregl.Popup({ offset: PIN_POPUP_OFFSET }).setDOMContent(createSightingPopupContent(message, t))
         )
         .addTo(map)
     );
-    sightingMarkersRef.current = markers;
 
     return () => {
       markers.forEach((marker) => marker.remove());
     };
   }, [mapReady, messages, t]);
 
-  // Recentre the view, user marker, and search radius when the location changes
+  // Recentre the view, user marker, and search radius when the location changes.
+  // The camera is left alone once the user has moved it themselves; the
+  // user marker and radius always follow the location.
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
 
-    map.jumpTo({ center });
+    if (!userMovedRef.current) {
+      map.jumpTo({ center });
+    }
     userMarkerRef.current?.setLngLat(center);
     circleSourceRef.current?.setData(createCirclePolygon(center, DEFAULT_RADIUS_METERS));
   }, [mapReady, center]);

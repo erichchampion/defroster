@@ -475,6 +475,8 @@ button { font-family: inherit; }
 .pin { display: block; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--pc); border: 2.5px solid #fff; box-shadow: var(--shadow-md); }
 .maplibregl-popup-content { font-family: var(--font-sans); font-size: 13px; padding: 10px 12px; border-radius: var(--r-md); box-shadow: var(--shadow-md); }
 .maplibregl-popup-close-button { font-size: 16px; padding: 2px 7px; }
+.sig-popup { min-width: 150px; }
+.sig-popup .mono { margin-top: 6px; color: var(--ink-2); font-size: 12px; }
 
 /* ============================================================
    REPORT SHEET

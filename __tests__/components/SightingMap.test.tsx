@@ -65,6 +65,7 @@ interface MockMapLike {
   addSource: jest.Mock;
   addLayer: jest.Mock;
   addControl: jest.Mock;
+  getSource: jest.Mock;
   jumpTo: jest.Mock;
   remove: jest.Mock;
   scrollZoom: { disable: jest.Mock };
@@ -206,7 +207,7 @@ describe('SightingMap', () => {
   });
 
   describe('Location Updates', () => {
-    it('should recentre the map when current location changes', () => {
+    it('should recentre the map and sync the radius circle when current location changes', () => {
       const { rerender } = renderWithI18n(
         <SightingMap messages={mockMessages} currentLocation={mockCurrentLocation} />
       );
@@ -214,7 +215,32 @@ describe('SightingMap', () => {
       const newLocation = { latitude: 37.8, longitude: -122.45 };
       rerender(<I18nProvider><SightingMap messages={mockMessages} currentLocation={newLocation} /></I18nProvider>);
 
-      expect(getMaps()[0].jumpTo).toHaveBeenCalledWith({ center: [newLocation.longitude, newLocation.latitude] });
+      const mapInstance = getMaps()[0];
+      expect(mapInstance.jumpTo).toHaveBeenCalledWith({ center: [newLocation.longitude, newLocation.latitude] });
+
+      const circleSource = mapInstance.getSource.mock.results[0].value as { setData: jest.Mock };
+      expect(circleSource.setData).toHaveBeenCalled();
+    });
+
+    it('should keep syncing data layers after the user moves the camera, without yanking the view', () => {
+      const { rerender } = renderWithI18n(
+        <SightingMap messages={[]} currentLocation={mockCurrentLocation} />
+      );
+      const mapInstance = getMaps()[0];
+      const jumpsBeforeUserMove = mapInstance.jumpTo.mock.calls.length;
+
+      // Simulate the user panning
+      const dragHandler = mapInstance.on.mock.calls.find(([event]) => event === 'dragstart');
+      expect(dragHandler).toBeDefined();
+      (dragHandler as unknown as [string, () => void])[1]();
+
+      const newLocation = { latitude: 37.8, longitude: -122.45 };
+      rerender(<I18nProvider><SightingMap messages={[]} currentLocation={newLocation} /></I18nProvider>);
+
+      // Camera untouched, but the radius circle still follows the location
+      expect(mapInstance.jumpTo.mock.calls.length).toBe(jumpsBeforeUserMove);
+      const circleSource = mapInstance.getSource.mock.results[0].value as { setData: jest.Mock };
+      expect(circleSource.setData).toHaveBeenCalled();
     });
 
     it('should rebuild markers when messages change', () => {

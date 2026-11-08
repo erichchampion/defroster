@@ -149,6 +149,9 @@ export default function SightingMap({ messages, currentLocation }: SightingMapPr
     });
     mapRef.current = map;
 
+    // Zoom in/out buttons (parity with Leaflet's default zoom control)
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+
     map.on('load', () => {
       // Parity with the previous Leaflet config: avoid hijacking page scroll
       map.scrollZoom.disable();

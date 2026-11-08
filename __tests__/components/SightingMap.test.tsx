@@ -16,6 +16,7 @@ jest.mock('maplibre-gl', () => {
     });
     addSource = jest.fn();
     addLayer = jest.fn();
+    addControl = jest.fn();
     getSource = jest.fn(() => ({ setData: jest.fn() }));
     jumpTo = jest.fn();
     getZoom = jest.fn(() => 13);
@@ -25,6 +26,10 @@ jest.mock('maplibre-gl', () => {
     constructor() {
       MockMap.instances.push(this);
     }
+  }
+
+  class MockNavigationControl {
+    constructor(public options?: { showCompass?: boolean }) {}
   }
 
   class MockMarker {
@@ -49,7 +54,7 @@ jest.mock('maplibre-gl', () => {
     }
   }
 
-  return { Map: MockMap, Marker: MockMarker, Popup: MockPopup };
+  return { Map: MockMap, Marker: MockMarker, Popup: MockPopup, NavigationControl: MockNavigationControl };
 });
 
 import maplibregl from 'maplibre-gl';
@@ -59,6 +64,7 @@ interface MockMapLike {
   on: jest.Mock;
   addSource: jest.Mock;
   addLayer: jest.Mock;
+  addControl: jest.Mock;
   jumpTo: jest.Mock;
   remove: jest.Mock;
   scrollZoom: { disable: jest.Mock };
@@ -136,6 +142,17 @@ describe('SightingMap', () => {
       expect(mapInstance.addSource).toHaveBeenCalledWith('search-radius', expect.objectContaining({ type: 'geojson' }));
       expect(mapInstance.addLayer).toHaveBeenCalledTimes(2); // fill + outline
       expect(mapInstance.scrollZoom.disable).toHaveBeenCalled();
+    });
+
+    it('should add zoom controls (Leaflet parity)', () => {
+      renderWithI18n(<SightingMap messages={[]} currentLocation={mockCurrentLocation} />);
+
+      const mapInstance = getMaps()[0];
+      expect(mapInstance.addControl).toHaveBeenCalledTimes(1);
+      const [control, position] = mapInstance.addControl.mock.calls[0];
+      expect(control).toBeInstanceOf(maplibregl.NavigationControl);
+      expect((control as { options?: { showCompass?: boolean } }).options).toEqual({ showCompass: false });
+      expect(position).toBe('top-left');
     });
 
     it('should render current location popup content', () => {
